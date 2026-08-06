@@ -1,63 +1,58 @@
-# COSAHackathonTemplate
+# Data Definition Engine UI
 
-This is a template for COSA workshops/open source projects which could be used to create new projects.
+This Electron application packages a narrow UI around the CDISC Data Definition Engine workflow:
 
-## How to use this template (remove this section)
+- Step 1: generate a DDS JSON template from a USDM JSON file and create a patch file.
+- Step 2: apply the patch file (manually edited by the user) and refresh the DDS JSON template.
+- Step 3: generate Define-XML from the DDS JSON template.
+- Result: render the generated Define-XML with the bundled stylesheet viewer.
 
-You can copy this template and use this for your open source project, workshops, hackathons or similar where participants should contribute content. Please update the README and other files depending on your requirements, project description etc. You find various "How Tos" documents if you or your expected contributors are not familar with setting up and working with repositories. Feel free to remove no longer applicable ones for your own repository.
+## Bundle engine
 
-You might want to checkout [makeareadme.com](https://www.makeareadme.com) to gain additional guidance and options for a typical README file.
+The UI relies on upstream DDE sources under these paths:
 
-![License: CC0-1.0](https://img.shields.io/badge/License-CC0_1.0-blue.svg)
+- `assets/dde/define-xml`
+- `assets/dde/generator`
 
-**License**: This template is using [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). So you can copy or fork this template without the need to reference. Keep attribution from CODE_OF_CONDUCT as this uses CC-BY-4.0. The license files contained are meant to be used for the final open source project you run.
+Copy these files from the current `cdisc-org/data-definition-engine` repository.
 
-TODO:
+## Python prerequisites
 
-* update readme for your project needs, e.g. use CC0 or CC-BY-4.0 license
-* update LICENSE, [INCLUDE COPYRIGHT INSTANCE] -> e.g. Project XY, CDISC, John Doe
-* update CODE_OF_CONDUCT, [INSERT CONTACT METHOD] -> e.g. <example@example.com>
-* update CONTRIBUTION.md if you want to provide additional rules or guidances, for example naming conventions
+The app runs the bundled Python scripts from `assets/dde` by spawning the host Python executable.
 
-*-------------------------- DELETE EVERYTHIG ABOVE ---------------------------*
+- Python `3.8+`
+- A working `python3` on macOS/Linux or `python` on Windows
+- Optional override via persisted setting `settings.other.pythonCommand`
 
+Install the required Python packages before running Step 1 or Step 2:
 
-# *NAME* 
+```bash
+pip install -r assets/dde/define-xml/requirements.txt
+pip install -r assets/dde/generator/requirements.txt
+```
 
-This repository should be used for the *Project/Workshop/Hackathon XY* to contain code, minutes, notes, outcomes, discussions and more. It is meant to allow anyone working with the results and discussions to allow flexible collaboration and follow up projects.
+The app pre-flight check verifies these imports:
 
-## Description
+- `cdisc_library_client`
+- `jmespath`
+- `odmlib`
+- `defineutils`
+- `yaml`
+- `dotenv`
 
-The main purpose of *Project Name* is to ....
+## CDISC Library access
 
-If possible use images as well.
+Step 1 may require a CDISC Library API key depending on the selected workflow inputs.
 
-![Image Description](./images/placeholder.png)
+- Provide it in the Step 1 screen.
+- The app forwards it to the Python process as both `--cdisc_api_key` and `CDISC_API_KEY`.
 
-## Contribution
+## Development
 
-Contribution is very welcome. When you contribute to this repository you are doing so under the below licenses. Please checkout [Contribution](CONTRIBUTING.md) for additional information. All contributions must adhere to the following [Code of Conduct](CODE_OF_CONDUCT.md).
-
-## License
-
-![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg) ![License: CC BY 4.0](https://img.shields.io/badge/License-CC_BY_4.0-blue.svg)
-
-### Code & Scripts
-
-This project is using the [MIT](http://www.opensource.org/licenses/MIT "The MIT License | Open Source Initiative") license (see [`LICENSE`](LICENSE)) for code and scripts.
-
-### Content
-
-The content files like documentation and minutes are released under [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/). This does not include trademark permissions.
-
-## Re-use
-
-When you re-use the source, keep or copy the license information also in the source code files. When you re-use the source in proprietary software or distribute binaries (derived or underived), copy additionally the license text to a third-party-licenses file or similar.
-
-When you want to re-use and refer to the content, please do so like the following:
-
-> Content based on [Project XY (GitHub)](https://github.com/xy/xy) used under the [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) license.
-
-
-
-
+```bash
+npm install
+npx tsc --noEmit
+npm test
+npm run lint
+npm run start
+```

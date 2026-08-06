@@ -1,0 +1,170 @@
+import React, { useContext, useState, useEffect } from 'react';
+import { Box, Button, Stack } from '@mui/material';
+import AppContext from '@utils/AppContext';
+import { DefineXmlContent } from '@interfaces/defineXml';
+import { useAppSelector, useAppDispatch } from '@redux/hooks';
+import StylesheetLayout from '@components/DefineXmlStylesheet/StylesheetLayout';
+import {
+  openSnackbar,
+  setDefineFileId,
+  setDefineIsLoading,
+} from '@redux/slices/ui';
+import Loading from '@components/Loading';
+
+const styles = {
+  container: {
+    height: '100%',
+    width: '100%',
+    backgroundColor: 'background.paper',
+  },
+  loading: {
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    display: 'flex',
+    backgroundColor: 'background.paper',
+    flexDirection: 'column',
+    transform: 'translate(-50%, -50%)',
+    zIndex: 999,
+  },
+  sponsored: {
+    marginTop: '10px',
+    fontSize: '14px',
+    color: 'text.secondary',
+    textAlign: 'center',
+  },
+  openButton: {
+    textTransform: 'none',
+    padding: 0,
+    marginRight: '4px',
+    minWidth: 'auto',
+    lineHeight: 1,
+  },
+  emptyCenter: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: '100%',
+  },
+  rowAlignCenter: {
+    alignItems: 'center',
+  },
+};
+
+const DefineXml: React.FC = () => {
+  const { apiService } = useContext(AppContext);
+  const dispatch = useAppDispatch();
+
+  const [content, setContent] = useState<DefineXmlContent | null>(null);
+
+  const currentFileId = useAppSelector(
+    (state) => state.ui.define.currentFileId,
+  );
+
+  const isDefineLoading = useAppSelector(
+    (state) => state.ui.define.isDefineLoading,
+  );
+
+  const handleOpenDefine = async () => {
+    const fileInfo = await apiService.openDefineXml();
+
+    if (fileInfo === null) {
+      // User cancelled
+      return;
+    }
+
+    dispatch(
+      openSnackbar({
+        type: 'info',
+        message: `Loaded ${fileInfo.filename}`,
+      }),
+    );
+    dispatch(setDefineFileId(fileInfo.fileId));
+  };
+
+  const handleOpenFile = async (
+    event: React.MouseEvent<HTMLAnchorElement, MouseEvent>,
+  ) => {
+    event.preventDefault();
+    // Get path of the current define file.
+    const currentFile = apiService
+      .getOpenedDefineFiles()
+      .filter((file) => file.fileId === currentFileId);
+
+    if (currentFile.length !== 1) {
+      // Should be impossible
+      return;
+    }
+
+    const definePath = currentFile[0].folder;
+    const linkRelativePath = event.currentTarget.getAttribute('href');
+    const delimiter = window.electron.isWindows ? '\\' : '/';
+
+    const filePath = `${definePath}${delimiter}${linkRelativePath}`;
+
+    const result = await apiService.openFileInDefaultApp(filePath);
+    if (result !== '') {
+      dispatch(
+        openSnackbar({
+          type: 'error',
+          message: `Failed to open file: ${result}`,
+        }),
+      );
+    }
+  };
+
+  useEffect(() => {
+    const fetchDefineContent = async () => {
+      if (currentFileId) {
+        const defineContent =
+          await apiService.getDefineXmlContent(currentFileId);
+        if ('error' in defineContent) {
+          dispatch(
+            openSnackbar({
+              type: 'error',
+              message: `Failed to load Define-XML content: ${defineContent.error}`,
+            }),
+          );
+          dispatch(setDefineFileId(null));
+          return;
+        }
+        setContent(defineContent);
+      }
+    };
+
+    if (currentFileId) {
+      dispatch(setDefineIsLoading(true));
+      fetchDefineContent();
+    } else {
+      setContent(null);
+      dispatch(setDefineIsLoading(false));
+    }
+  }, [currentFileId, apiService, dispatch]);
+
+  if (!content) {
+    if (isDefineLoading) {
+      return (
+        <Box sx={styles.container}>
+          <Box sx={styles.loading}>
+            <Loading />
+            <Box sx={styles.sponsored}>Sponsored by:</Box>
+          </Box>
+        </Box>
+      );
+    }
+    return (
+      <Box sx={styles.emptyCenter}>
+        <Stack direction="row" sx={styles.rowAlignCenter}>
+          <Button sx={styles.openButton} onClick={handleOpenDefine}>
+            Open file
+          </Button>
+          <Box>or drag and drop a Define-XML here</Box>
+        </Stack>
+      </Box>
+    );
+  }
+
+  return <StylesheetLayout content={content} onOpenFile={handleOpenFile} />;
+};
+
+export default DefineXml;

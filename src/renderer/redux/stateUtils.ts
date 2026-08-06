@@ -1,0 +1,66 @@
+import initialState, { ui, dde } from '@redux/initialState';
+import { IStore, IUi } from '@interfaces/common';
+import store from '@redux/store';
+import ApiService from '@services/ApiService';
+
+// In case new state slices are added, the previous state will be merged with the new version to add all required attributes
+const mergeDefaults = (
+  state: Record<string, unknown>,
+  defaultState: Record<string, unknown>,
+): Record<string, unknown> => {
+  if (state === null || state === undefined) {
+    return defaultState;
+  }
+  const newState = { ...state };
+  Object.keys(defaultState).forEach((attr) => {
+    if (
+      !!defaultState[attr] &&
+      (defaultState[attr] as Record<string, unknown>).constructor === Object
+    ) {
+      newState[attr] = mergeDefaults(
+        newState[attr] as Record<string, unknown>,
+        defaultState[attr] as Record<string, unknown>,
+      );
+    } else if (state[attr] === undefined) {
+      newState[attr] = defaultState[attr];
+    }
+  });
+  return newState;
+};
+
+export const safeLoadState = (state: IStore): IStore => {
+  try {
+    return mergeDefaults(
+      state as unknown as Record<string, unknown>,
+      initialState as unknown as Record<string, unknown>,
+    ) as unknown as IStore;
+  } catch (err) {
+    return initialState;
+  }
+};
+
+export const dehydrateState = (state: IStore): IStore => {
+  const newUi: IUi = {
+    ...ui,
+    appBarExpanded: state.ui.appBarExpanded,
+    zoomLevel: state.ui.zoomLevel,
+    pathname: state.ui.pathname,
+    define: state.ui.define,
+    reloadRequested: false,
+  };
+  const newDde = {
+    ...state.dde,
+    run: dde.run,
+  };
+
+  return { ...state, ui: newUi, dde: newDde };
+};
+
+export const saveStore = async (apiService: ApiService) => {
+  const state = dehydrateState(store.getState());
+  if (state) {
+    await apiService.saveLocalStore({
+      reduxStore: state,
+    });
+  }
+};
