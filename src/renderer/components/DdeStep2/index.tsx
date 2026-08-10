@@ -5,10 +5,13 @@ import {
   Card,
   CardContent,
   Grid,
+  IconButton,
+  InputAdornment,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
+import { InsertDriveFile } from '@mui/icons-material';
 import AppContext from '@utils/AppContext';
 import { useAppDispatch, useAppSelector } from '@redux/hooks';
 import { failDdeRun, setStep2Config, startDdeRun } from '@redux/slices/dde';
@@ -114,7 +117,7 @@ const DdeStep2: React.FC = () => {
       <Card>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 8 }}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Apply Patch File"
@@ -122,12 +125,22 @@ const DdeStep2: React.FC = () => {
                 onChange={(event) =>
                   updateConfig({ applyPatch: event.target.value })
                 }
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          edge="end"
+                          aria-label="Choose apply patch file"
+                          onClick={pickApplyPatch}
+                        >
+                          <InsertDriveFile />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Button fullWidth variant="outlined" onClick={pickApplyPatch}>
-                Choose Apply-Patch File
-              </Button>
             </Grid>
             <Grid size={{ xs: 12, md: 8 }}>
               <TextField

@@ -19,22 +19,32 @@ const styles = {
   card: {
     borderRadius: 3,
   },
-  logBox: {
+  logBox: (fullHeight: boolean) => ({
     fontFamily: 'Roboto Mono, monospace',
     fontSize: 13,
     lineHeight: 1.5,
     backgroundColor: 'grey.950',
-    color: 'grey.100',
+    color: 'grey.700',
     borderRadius: 2,
     p: 2,
     minHeight: 180,
-    maxHeight: 320,
+    maxHeight: fullHeight ? '100%' : 320,
+    height: fullHeight ? '100%' : 'auto',
     overflow: 'auto',
     whiteSpace: 'pre-wrap',
-  },
+    flex: fullHeight ? 1 : 'auto',
+  }),
 };
 
-const DdeExecution: React.FC = () => {
+interface DdeExecutionProps {
+  hideActions?: boolean;
+  fullHeight?: boolean;
+}
+
+const DdeExecution: React.FC<DdeExecutionProps> = ({
+  hideActions = false,
+  fullHeight = false,
+}) => {
   const dispatch = useAppDispatch();
   const { apiService } = useContext(AppContext);
   const run = useAppSelector((state) => state.dde.run);
@@ -43,7 +53,6 @@ const DdeExecution: React.FC = () => {
 
   useEffect(() => {
     if (!startedAt || !['starting', 'running'].includes(runStatus)) {
-      setElapsedMs(0);
       return undefined;
     }
 
@@ -100,9 +109,9 @@ const DdeExecution: React.FC = () => {
   };
 
   return (
-    <Card sx={styles.card}>
-      <CardContent>
-        <Stack spacing={2}>
+    <Card sx={{ ...styles.card, height: fullHeight ? '100%' : 'auto' }}>
+      <CardContent sx={{ height: fullHeight ? '100%' : 'auto' }}>
+        <Stack spacing={2} sx={{ height: fullHeight ? '100%' : 'auto' }}>
           <Stack direction="row" spacing={1} sx={{ alignItems: 'center' }}>
             <Typography variant="h6">Execution</Typography>
             <Chip
@@ -116,23 +125,29 @@ const DdeExecution: React.FC = () => {
           {run.outputPath ? (
             <Alert severity="info">Output: {run.outputPath}</Alert>
           ) : null}
-          <Box sx={styles.logBox}>
+          <Box sx={styles.logBox(fullHeight)}>
             {run.lines.length > 0
               ? run.lines.join('\n')
               : 'Waiting for process output...'}
           </Box>
-          <Stack direction="row" spacing={1}>
-            {['starting', 'running'].includes(run.status) ? (
-              <Button variant="contained" color="error" onClick={handleCancel}>
-                Cancel
-              </Button>
-            ) : null}
-            {run.status !== 'running' && run.status !== 'starting' ? (
-              <Button variant="text" onClick={handleClear}>
-                Clear
-              </Button>
-            ) : null}
-          </Stack>
+          {!hideActions ? (
+            <Stack direction="row" spacing={1}>
+              {['starting', 'running'].includes(run.status) ? (
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </Button>
+              ) : null}
+              {run.status !== 'running' && run.status !== 'starting' ? (
+                <Button variant="text" onClick={handleClear}>
+                  Clear
+                </Button>
+              ) : null}
+            </Stack>
+          ) : null}
         </Stack>
       </CardContent>
     </Card>

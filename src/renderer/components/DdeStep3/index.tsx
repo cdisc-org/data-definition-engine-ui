@@ -6,11 +6,14 @@ import {
   Checkbox,
   FormControlLabel,
   Grid,
+  IconButton,
+  InputAdornment,
   MenuItem,
   Stack,
   TextField,
   Typography,
 } from '@mui/material';
+import { FolderOpen, InsertDriveFile } from '@mui/icons-material';
 import AppContext from '@utils/AppContext';
 import { useAppDispatch, useAppSelector } from '@redux/hooks';
 import { failDdeRun, setStep3Config, startDdeRun } from '@redux/slices/dde';
@@ -112,7 +115,7 @@ const DdeStep3: React.FC = () => {
       <Card>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid size={{ xs: 12, md: 8 }}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="DDS JSON Template"
@@ -120,14 +123,24 @@ const DdeStep3: React.FC = () => {
                 onChange={(event) =>
                   updateConfig({ templatePath: event.target.value })
                 }
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          edge="end"
+                          aria-label="Choose template file"
+                          onClick={pickTemplate}
+                        >
+                          <InsertDriveFile />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Button fullWidth variant="outlined" onClick={pickTemplate}>
-                Choose Template
-              </Button>
-            </Grid>
-            <Grid size={{ xs: 12, md: 8 }}>
+            <Grid size={{ xs: 12 }}>
               <TextField
                 fullWidth
                 label="Define-XML Output"
@@ -137,12 +150,22 @@ const DdeStep3: React.FC = () => {
                     defineXmlOutputPath: event.target.value,
                   })
                 }
+                slotProps={{
+                  input: {
+                    endAdornment: (
+                      <InputAdornment position="end">
+                        <IconButton
+                          edge="end"
+                          aria-label="Choose output folder"
+                          onClick={pickOutputFolder}
+                        >
+                          <FolderOpen />
+                        </IconButton>
+                      </InputAdornment>
+                    ),
+                  },
+                }}
               />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <Button fullWidth variant="outlined" onClick={pickOutputFolder}>
-                Choose Output Folder
-              </Button>
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
               <TextField
