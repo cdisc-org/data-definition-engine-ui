@@ -10,6 +10,8 @@ export const settings: ISettings = {
     dragoverAnimation: true,
     disableUiAnimation: false,
     pythonCommand: '',
+    ddeScriptsPath: '',
+    pythonVenvPath: '',
   },
   define: {
     stylesheetShowComments: false,

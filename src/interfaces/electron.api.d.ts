@@ -47,5 +47,8 @@ export interface ElectronApi {
   ) => Promise<{ started: boolean } | { error: string }>;
   stopDdeStep: (id: string) => Promise<boolean>;
   onDdeProgress: (callback: (event: DdeProgressEvent) => void) => () => void;
-  checkPython: () => Promise<PythonCheckResult>;
+  checkPython: (runtimePaths?: {
+    ddeScriptsPath?: string;
+    pythonVenvPath?: string;
+  }) => Promise<PythonCheckResult>;
 }

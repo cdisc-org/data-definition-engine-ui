@@ -26,6 +26,7 @@ import {
   startDdeRun,
 } from '@redux/slices/dde';
 import { openSnackbar, setPathname } from '@redux/slices/ui';
+import { setSettings } from '@redux/slices/settings';
 import DdeExecution from '@components/DdeExecution';
 import { buildLoaderArgs } from '@utils/buildLoaderArgs';
 import { paths } from '@/misc/constants';
@@ -43,6 +44,7 @@ const DdeStep1: React.FC = () => {
   const config = useAppSelector((state) => state.dde.step1);
   const run = useAppSelector((state) => state.dde.run);
   const pythonCheck = useAppSelector((state) => state.dde.pythonCheck);
+  const settings = useAppSelector((state) => state.settings.other);
   const [runSnapshot, setRunSnapshot] = useState<Partial<typeof config> | null>(
     null,
   );
@@ -56,15 +58,28 @@ const DdeStep1: React.FC = () => {
     }
 
     const runCheck = async () => {
-      const result = await apiService.checkPython();
+      const result = await apiService.checkPython({
+        ddeScriptsPath: settings.ddeScriptsPath || undefined,
+        pythonVenvPath: settings.pythonVenvPath || undefined,
+      });
       dispatch(setPythonCheck(result));
     };
 
     runCheck();
-  }, [apiService, dispatch, pythonCheck]);
+  }, [
+    apiService,
+    dispatch,
+    pythonCheck,
+    settings.ddeScriptsPath,
+    settings.pythonVenvPath,
+  ]);
 
   const updateConfig = (next: Partial<typeof config>) => {
     dispatch(setStep1Config(next));
+  };
+
+  const updateSetting = (next: Partial<typeof settings>) => {
+    dispatch(setSettings({ other: next }));
   };
 
   const pickFile = async (
@@ -85,6 +100,16 @@ const DdeStep1: React.FC = () => {
       }
     }
 
+    if (key === 'patchFile' && type === 'folder') {
+      // If the user selected a folder for the patch file, we want to append "patch.yaml" to the path
+      result = `${result}/patch.yaml`;
+    }
+
+    if (key === 'validationReportPath' && type === 'folder') {
+      // If the user selected a folder for the validation report, we want to append "validation_report.xlsx" to the path
+      result = `${result}/validation_report.xlsx`;
+    }
+
     updateConfig({
       [key]:
         type === 'file'
@@ -102,6 +127,17 @@ const DdeStep1: React.FC = () => {
     }
 
     updateConfig({ outputTemplatePath: `${result}/define.json` });
+  };
+
+  const pickRuntimeDirectory = async (
+    key: 'ddeScriptsPath' | 'pythonVenvPath',
+  ) => {
+    const result = await apiService.openDirectoryDialog(settings[key] || null);
+    if (!result) {
+      return;
+    }
+
+    updateSetting({ [key]: result } as Partial<typeof settings>);
   };
 
   const runStep = async () => {
@@ -134,6 +170,10 @@ const DdeStep1: React.FC = () => {
         CDISC_API_KEY: config.cdiscApiKey || undefined,
         DDE_PYTHON_EXE: pythonCommand || undefined,
       },
+      runtimePaths: {
+        ddeScriptsPath: settings.ddeScriptsPath || undefined,
+        pythonVenvPath: settings.pythonVenvPath || undefined,
+      },
     });
 
     if ('error' in result) {
@@ -142,6 +182,8 @@ const DdeStep1: React.FC = () => {
   };
 
   const handleContinueToStep2 = () => {
+    // Reset execution status and log
+    dispatch(clearDdeRun());
     dispatch(setPathname({ pathname: paths.STEP2 }));
   };
 
@@ -174,7 +216,7 @@ const DdeStep1: React.FC = () => {
         </Typography>
       </Box>
 
-      {pythonCheck ? (
+      {!showExecutionView && pythonCheck ? (
         <Alert severity={pythonCheck.ok ? 'success' : 'warning'}>
           {pythonCheck.ok
             ? `Using ${pythonCheck.pythonCommand} (${pythonCheck.version})`
@@ -186,6 +228,68 @@ const DdeStep1: React.FC = () => {
         <Card>
           <CardContent>
             <Stack spacing={3}>
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Runtime Paths
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      label="Path to DDE Scripts"
+                      value={settings.ddeScriptsPath}
+                      onChange={(event) =>
+                        updateSetting({ ddeScriptsPath: event.target.value })
+                      }
+                      slotProps={{
+                        input: {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                edge="end"
+                                aria-label="Choose DDE scripts path"
+                                onClick={() =>
+                                  pickRuntimeDirectory('ddeScriptsPath')
+                                }
+                              >
+                                <FolderOpen />
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      label="Path to Python VENV"
+                      value={settings.pythonVenvPath}
+                      onChange={(event) =>
+                        updateSetting({ pythonVenvPath: event.target.value })
+                      }
+                      slotProps={{
+                        input: {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                edge="end"
+                                aria-label="Choose Python venv path"
+                                onClick={() =>
+                                  pickRuntimeDirectory('pythonVenvPath')
+                                }
+                              >
+                                <FolderOpen />
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+
               <Box>
                 <Typography variant="h6" gutterBottom>
                   Inputs
@@ -470,21 +574,21 @@ const DdeStep1: React.FC = () => {
 
       {showExecutionView ? (
         <Stack spacing={2} sx={{ flex: 1, minHeight: 0 }}>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ justifyContent: 'flex-end' }}
-          >
-            <Button variant="contained" onClick={handleContinueToStep2}>
+          <Box sx={{ flex: 1, minHeight: 0 }}>
+            <DdeExecution hideActions fullHeight />
+          </Box>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              onClick={handleContinueToStep2}
+              disabled={run.status !== 'done'}
+            >
               Continue to Step 2
             </Button>
             <Button variant="outlined" onClick={handleCancel}>
               Cancel
             </Button>
           </Stack>
-          <Box sx={{ flex: 1, minHeight: 0 }}>
-            <DdeExecution hideActions fullHeight />
-          </Box>
         </Stack>
       ) : (
         <>

@@ -2,6 +2,7 @@ import {
   DefineFileInfo,
   DefineXmlContent,
   DdeRunRequest,
+  DdeRuntimePaths,
   FileInfo,
   ILocalStore,
   IStore,
@@ -130,8 +131,10 @@ class ApiService {
     return window.electron.stopDdeStep(id);
   };
 
-  public checkPython = async (): Promise<PythonCheckResult> => {
-    return window.electron.checkPython();
+  public checkPython = async (
+    runtimePaths?: DdeRuntimePaths,
+  ): Promise<PythonCheckResult> => {
+    return window.electron.checkPython(runtimePaths);
   };
 }
 

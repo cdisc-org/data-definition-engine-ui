@@ -38,7 +38,10 @@ export const ddeSlice = createSlice({
     ) => {
       state.step3 = { ...state.step3, ...action.payload };
     },
-    setPythonCheck: (state, action: PayloadAction<PythonCheckResult>) => {
+    setPythonCheck: (
+      state,
+      action: PayloadAction<PythonCheckResult | null>,
+    ) => {
       state.pythonCheck = action.payload;
     },
     startDdeRun: (

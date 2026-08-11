@@ -1,4 +1,4 @@
-import initialState, { ui, dde } from '@redux/initialState';
+import initialState, { ui } from '@redux/initialState';
 import { IStore, IUi } from '@interfaces/common';
 import store from '@redux/store';
 import ApiService from '@services/ApiService';
@@ -50,7 +50,7 @@ export const dehydrateState = (state: IStore): IStore => {
   };
   const newDde = {
     ...state.dde,
-    run: dde.run,
+    run: state.dde.run,
   };
 
   return { ...state, ui: newUi, dde: newDde };

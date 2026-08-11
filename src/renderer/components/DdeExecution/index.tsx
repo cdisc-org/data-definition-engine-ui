@@ -12,8 +12,6 @@ import {
 import AppContext from '@utils/AppContext';
 import { useAppDispatch, useAppSelector } from '@redux/hooks';
 import { clearDdeRun } from '@redux/slices/dde';
-import { openSnackbar, setDefineFileId, setPathname } from '@redux/slices/ui';
-import { paths } from '@/misc/constants';
 
 const styles = {
   card: {
@@ -63,36 +61,19 @@ const DdeExecution: React.FC<DdeExecutionProps> = ({
     return () => window.clearInterval(timer);
   }, [startedAt, runStatus]);
 
-  useEffect(() => {
-    const openGeneratedDefine = async () => {
-      if (run.status !== 'done' || !run.definePath) {
-        return;
-      }
-
-      const fileInfo = await apiService.openDefineXml(run.definePath);
-      if (fileInfo === null) {
-        return;
-      }
-
-      dispatch(setDefineFileId(fileInfo.fileId));
-      dispatch(setPathname({ pathname: paths.DEFINEXML }));
-      dispatch(
-        openSnackbar({
-          type: 'success',
-          message: `Loaded ${fileInfo.filename}`,
-        }),
-      );
-    };
-
-    openGeneratedDefine();
-  }, [apiService, dispatch, run]);
-
   const elapsedLabel = useMemo(() => {
     const totalSeconds = Math.floor(elapsedMs / 1000);
     const minutes = Math.floor(totalSeconds / 60);
     const seconds = totalSeconds % 60;
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, [elapsedMs]);
+
+  const logContent =
+    run.lines.length > 0
+      ? run.lines.join('\n')
+      : ['starting', 'running'].includes(run.status)
+        ? 'Waiting for process output...'
+        : `Execution finished with status ${run.status}`;
 
   if (run.status === 'idle') {
     return null;
@@ -122,14 +103,7 @@ const DdeExecution: React.FC<DdeExecutionProps> = ({
             <Chip size="small" variant="outlined" label={elapsedLabel} />
           </Stack>
           {run.error ? <Alert severity="error">{run.error}</Alert> : null}
-          {run.outputPath ? (
-            <Alert severity="info">Output: {run.outputPath}</Alert>
-          ) : null}
-          <Box sx={styles.logBox(fullHeight)}>
-            {run.lines.length > 0
-              ? run.lines.join('\n')
-              : 'Waiting for process output...'}
-          </Box>
+          <Box sx={styles.logBox(fullHeight)}>{logContent}</Box>
           {!hideActions ? (
             <Stack direction="row" spacing={1}>
               {['starting', 'running'].includes(run.status) ? (
@@ -147,6 +121,9 @@ const DdeExecution: React.FC<DdeExecutionProps> = ({
                 </Button>
               ) : null}
             </Stack>
+          ) : null}
+          {run.outputPath ? (
+            <Alert severity="info">Output: {run.outputPath}</Alert>
           ) : null}
         </Stack>
       </CardContent>

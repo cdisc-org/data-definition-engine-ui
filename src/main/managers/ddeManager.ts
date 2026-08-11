@@ -3,7 +3,11 @@ import { ChildProcessWithoutNullStreams, execFile, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
-import { DdeRunRequest, PythonCheckResult } from '@interfaces/common';
+import {
+  DdeRunRequest,
+  DdeRuntimePaths,
+  PythonCheckResult,
+} from '@interfaces/common';
 
 interface DdeManagerOptions {
   resourcesPath: string;
@@ -23,71 +27,97 @@ class DdeManager {
     this.resourcesPath = resourcesPath;
   }
 
-  private getPythonCommand(env?: Record<string, string | undefined>) {
+  private getDdeScriptsPath(runtimePaths?: DdeRuntimePaths) {
+    if (runtimePaths?.ddeScriptsPath) {
+      return runtimePaths.ddeScriptsPath;
+    }
+
+    return path.join(this.resourcesPath, 'dde');
+  }
+
+  private getPythonVenvPath(
+    env?: Record<string, string | undefined>,
+    runtimePaths?: DdeRuntimePaths,
+  ) {
+    if (runtimePaths?.pythonVenvPath) {
+      return runtimePaths.pythonVenvPath;
+    }
+
+    if (env?.DDE_PYTHON_VENV_PATH) {
+      return env.DDE_PYTHON_VENV_PATH;
+    }
+
+    return undefined;
+  }
+
+  private getPythonCommand(
+    env?: Record<string, string | undefined>,
+    runtimePaths?: DdeRuntimePaths,
+  ) {
     if (env?.DDE_PYTHON_EXE) {
       return env.DDE_PYTHON_EXE;
     }
 
-    const workspaceVenvPath = path.join(
-      '/home/nogi/nogi/data-definition-engine-ui',
-      '.venv',
-    );
-    const venvPythonPath =
-      process.platform === 'win32'
-        ? path.join(workspaceVenvPath, 'Scripts', 'python.exe')
-        : path.join(workspaceVenvPath, 'bin', 'python');
+    const venvPath = this.getPythonVenvPath(env, runtimePaths);
+    if (venvPath) {
+      const venvPythonPath =
+        process.platform === 'win32'
+          ? path.join(venvPath, 'Scripts', 'python.exe')
+          : path.join(venvPath, 'bin', 'python');
 
-    if (fs.existsSync(venvPythonPath)) {
-      return venvPythonPath;
+      if (fs.existsSync(venvPythonPath)) {
+        return venvPythonPath;
+      }
     }
 
     return process.platform === 'win32' ? 'python' : 'python3';
   }
 
-  private getPythonEnv(env?: Record<string, string | undefined>) {
+  private getPythonEnv(
+    env?: Record<string, string | undefined>,
+    runtimePaths?: DdeRuntimePaths,
+  ) {
     const pythonEnv = {
       ...process.env,
       ...env,
       CDISC_API_KEY: env?.CDISC_API_KEY || process.env.CDISC_API_KEY,
     } as Record<string, string | undefined>;
 
-    const workspaceVenvPath = path.join(
-      '/home/nogi/nogi/data-definition-engine-ui',
-      '.venv',
-    );
-    const venvBinPath =
-      process.platform === 'win32'
-        ? path.join(workspaceVenvPath, 'Scripts')
-        : path.join(workspaceVenvPath, 'bin');
-    const venvPythonPath =
-      process.platform === 'win32'
-        ? path.join(venvBinPath, 'python.exe')
-        : path.join(venvBinPath, 'python');
+    const venvPath = this.getPythonVenvPath(env, runtimePaths);
+    if (venvPath) {
+      const venvBinPath =
+        process.platform === 'win32'
+          ? path.join(venvPath, 'Scripts')
+          : path.join(venvPath, 'bin');
+      const venvPythonPath =
+        process.platform === 'win32'
+          ? path.join(venvBinPath, 'python.exe')
+          : path.join(venvBinPath, 'python');
 
-    if (fs.existsSync(venvPythonPath)) {
-      pythonEnv.VIRTUAL_ENV = workspaceVenvPath;
-      pythonEnv.PATH = [venvBinPath, pythonEnv.PATH || '']
-        .filter(Boolean)
-        .join(path.delimiter);
+      if (fs.existsSync(venvPythonPath)) {
+        pythonEnv.VIRTUAL_ENV = venvPath;
+        pythonEnv.PATH = [venvBinPath, pythonEnv.PATH || '']
+          .filter(Boolean)
+          .join(path.delimiter);
+      }
     }
 
     return pythonEnv;
   }
 
-  private getScriptPath(step: DdeRunRequest['step']) {
+  private getScriptPath(
+    step: DdeRunRequest['step'],
+    runtimePaths?: DdeRuntimePaths,
+  ) {
+    const baseScriptsPath = this.getDdeScriptsPath(runtimePaths);
+
     if (step === 'step1' || step === 'step2') {
-      return path.join(
-        this.resourcesPath,
-        'dde',
-        'define-xml',
-        'create_define_json.py',
-      );
+      return path.join(baseScriptsPath, 'define-xml', 'create_define_json.py');
     }
 
     return path.join(
-      this.resourcesPath,
-      'dde',
-      'generator',
+      baseScriptsPath,
+      'generators',
       'define',
       'define_generator.py',
     );
@@ -107,17 +137,23 @@ class DdeManager {
     event: IpcMainInvokeEvent,
     request: DdeRunRequest,
   ): Promise<{ started: boolean } | { error: string }> => {
-    const scriptPath = this.getScriptPath(request.step);
+    const scriptPath = this.getScriptPath(request.step, request.runtimePaths);
     if (!fs.existsSync(scriptPath)) {
       return { error: `Bundled DDE script not found: ${scriptPath}` };
     }
 
-    const pythonCommand = this.getPythonCommand(request.env);
+    const pythonCommand = this.getPythonCommand(
+      request.env,
+      request.runtimePaths,
+    );
     const outputPath = this.getOutputPath(request);
     const definePath = request.step === 'step3' ? outputPath : undefined;
-    const child = spawn(pythonCommand, [scriptPath, ...request.args], {
+    const child = spawn(pythonCommand, ['-u', scriptPath, ...request.args], {
       cwd: path.dirname(scriptPath),
-      env: this.getPythonEnv(request.env),
+      env: {
+        ...this.getPythonEnv(request.env, request.runtimePaths),
+        PYTHONUNBUFFERED: '1',
+      },
     });
 
     this.runningProcesses.set(request.id, {
@@ -198,8 +234,11 @@ class DdeManager {
     return current.child.kill();
   };
 
-  public checkPython = async (): Promise<PythonCheckResult> => {
-    const pythonCommand = this.getPythonCommand();
+  public checkPython = async (
+    _event: IpcMainInvokeEvent,
+    runtimePaths?: DdeRuntimePaths,
+  ): Promise<PythonCheckResult> => {
+    const pythonCommand = this.getPythonCommand(undefined, runtimePaths);
     const modules = [
       'cdisc_library_client',
       'jmespath',
@@ -221,7 +260,7 @@ class DdeManager {
       execFile(
         pythonCommand,
         ['-c', script],
-        { env: this.getPythonEnv() },
+        { env: this.getPythonEnv(undefined, runtimePaths) },
         (error, stdout, stderr) => {
           if (error) {
             resolve({

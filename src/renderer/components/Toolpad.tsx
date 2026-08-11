@@ -16,14 +16,14 @@ import {
 import { Theme } from '@mui/material/styles';
 import { useAppTheme } from '@renderer/theme';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
-import SchemaIcon from '@mui/icons-material/Schema';
-import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import HealingIcon from '@mui/icons-material/Healing';
 import DescriptionIcon from '@mui/icons-material/Description';
-import KeyboardIcon from '@mui/icons-material/Keyboard';
+import SportsScoreIcon from '@mui/icons-material/SportsScore';
 import { AllowedPathnames } from '@interfaces/common';
 import { paths } from '@/misc/constants';
-import { useAppSelector, useAppDispatch } from '@redux/hooks';
+import { useAppDispatch } from '@redux/hooks';
 import { setPathname } from '@redux/slices/ui';
+import { clearDdeRun } from '@redux/slices/dde';
 import DefineToolbar from '@components/Toolbars/DefineToolbar';
 import ToolbarActions from '@components/ToolbarActions';
 import Shortcuts from '@components/Shortcuts';
@@ -201,14 +201,14 @@ const NAVIGATION: NavigationEntry[] = [
     kind: 'item',
     pathname: paths.STEP2,
     title: 'Step 2',
-    icon: <AutoFixHighIcon />,
+    icon: <HealingIcon />,
   },
   {
     id: 'step3',
     kind: 'item',
     pathname: paths.STEP3,
     title: 'Step 3',
-    icon: <SchemaIcon />,
+    icon: <SportsScoreIcon />,
   },
   {
     id: 'result',
@@ -216,22 +216,6 @@ const NAVIGATION: NavigationEntry[] = [
     pathname: paths.DEFINEXML,
     title: 'Result',
     icon: <DescriptionIcon />,
-  },
-  {
-    id: 'workflow-divider',
-    kind: 'divider',
-  },
-  {
-    id: 'misc-header',
-    kind: 'header',
-    title: 'Miscellaneous',
-  },
-  {
-    id: 'shortcuts',
-    kind: 'item',
-    action: 'shortcuts',
-    title: 'Shortcuts',
-    icon: <KeyboardIcon />,
   },
 ];
 
@@ -268,9 +252,6 @@ const Toolpad: React.FC<ToolpadProps> = ({
 }) => {
   const theme = useAppTheme();
   const dispatch = useAppDispatch();
-  const compactMode = useAppSelector(
-    (state) => state.settings.other.compactMode,
-  );
 
   const navigationWidth = theme.densitySettings.drawer.widthExpanded;
 
@@ -285,6 +266,13 @@ const Toolpad: React.FC<ToolpadProps> = ({
     }
 
     if (entry.pathname) {
+      if (
+        entry.pathname === paths.STEP1 ||
+        entry.pathname === paths.STEP2 ||
+        entry.pathname === paths.STEP3
+      ) {
+        dispatch(clearDdeRun());
+      }
       dispatch(setPathname({ pathname: entry.pathname }));
     }
   };
@@ -359,8 +347,8 @@ const Toolpad: React.FC<ToolpadProps> = ({
         <Box
           sx={{
             ...styles.main,
-            px: compactMode ? 1 : 2,
-            py: compactMode ? 1 : 2,
+            px: 2,
+            py: 2,
           }}
         >
           {children}

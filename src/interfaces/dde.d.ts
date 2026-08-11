@@ -69,11 +69,17 @@ export interface IDdeState {
   pythonCheck: PythonCheckResult | null;
 }
 
+export interface DdeRuntimePaths {
+  ddeScriptsPath?: string;
+  pythonVenvPath?: string;
+}
+
 export interface DdeRunRequest {
   id: string;
   step: DdeStep;
   args: string[];
   env?: Record<string, string | undefined>;
+  runtimePaths?: DdeRuntimePaths;
 }
 
 export interface DdeProgressEvent {

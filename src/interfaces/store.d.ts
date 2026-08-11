@@ -16,6 +16,8 @@ export interface ISettings {
     dragoverAnimation: boolean;
     disableUiAnimation: boolean;
     pythonCommand: string;
+    ddeScriptsPath: string;
+    pythonVenvPath: string;
   };
 }
 

@@ -22,11 +22,11 @@ import { openSnackbar, setDefineFileId, resetDefineUi } from '@redux/slices/ui';
 import AppContext from '@utils/AppContext';
 
 const styles = {
-  main: {
+  main: (theme) => ({
     width: '100%',
-    paddingLeft: 2,
+    paddingLeft: `${theme.densitySettings.drawer.widthExpanded}px`,
     justifyContent: 'flex-start',
-  },
+  }),
   searchInput: {},
 };
 
@@ -106,7 +106,7 @@ const DefineToolbar: React.FC = () => {
   }, []);
 
   return (
-    <Stack sx={styles.main} direction="row" spacing={1}>
+    <Stack sx={styles.main} direction="row" spacing={8}>
       <Tooltip title="Open Define-XML" enterDelay={1000}>
         <IconButton onClick={handleOpenClick} id="openDefine" size="small">
           <FileOpenOutlinedIcon
@@ -133,7 +133,7 @@ const DefineToolbar: React.FC = () => {
             ),
             endAdornment: searchTerm ? (
               <InputAdornment position="end">
-                <Tooltip title="Previous (Shift+Enter)">
+                <Tooltip title="Previous">
                   <IconButton
                     size="small"
                     onClick={handleSearchPrevious}
@@ -143,7 +143,7 @@ const DefineToolbar: React.FC = () => {
                     <KeyboardArrowUpIcon fontSize="small" />
                   </IconButton>
                 </Tooltip>
-                <Tooltip title="Next (Enter)">
+                <Tooltip title="Next">
                   <IconButton
                     size="small"
                     onClick={handleSearchNext}
