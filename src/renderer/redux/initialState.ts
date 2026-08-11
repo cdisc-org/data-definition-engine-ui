@@ -18,7 +18,7 @@ export const settings: ISettings = {
 export const ui: IUi = {
   pathname: paths.STEP1,
   zoomLevel: 0,
-  appBarExpanded: false,
+  appBarExpanded: true,
   modals: [],
   snackbar: {
     type: null,

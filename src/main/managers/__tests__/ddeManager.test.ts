@@ -21,4 +21,15 @@ describe('DdeManager', () => {
     );
     expect(send).not.toHaveBeenCalled();
   });
+
+  it('uses the workspace virtual environment python interpreter', () => {
+    const manager = new DdeManager({ resourcesPath: '/tmp/assets' });
+
+    const pythonCommand = (
+      manager as unknown as { getPythonCommand: () => string }
+    ).getPythonCommand();
+
+    expect(pythonCommand).toContain('.venv');
+    expect(pythonCommand).toContain('python');
+  });
 });

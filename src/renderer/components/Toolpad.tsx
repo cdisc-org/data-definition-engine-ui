@@ -268,14 +268,11 @@ const Toolpad: React.FC<ToolpadProps> = ({
 }) => {
   const theme = useAppTheme();
   const dispatch = useAppDispatch();
-  const appBarExpanded = useAppSelector((state) => state.ui.appBarExpanded);
   const compactMode = useAppSelector(
     (state) => state.settings.other.compactMode,
   );
 
-  const navigationWidth = appBarExpanded
-    ? theme.densitySettings.drawer.widthExpanded
-    : theme.densitySettings.drawer.widthCollapsed;
+  const navigationWidth = theme.densitySettings.drawer.widthExpanded;
 
   const handleNavigationClick = (entry: NavigationEntry) => {
     if (entry.kind !== 'item') {
@@ -325,11 +322,11 @@ const Toolpad: React.FC<ToolpadProps> = ({
         >
           {NAVIGATION.map((entry) => {
             if (entry.kind === 'header') {
-              return appBarExpanded ? (
+              return (
                 <ListSubheader key={entry.id} sx={styles.drawerHeader}>
                   {entry.title}
                 </ListSubheader>
-              ) : null;
+              );
             }
 
             if (entry.kind === 'divider') {
@@ -343,16 +340,14 @@ const Toolpad: React.FC<ToolpadProps> = ({
                 key={entry.id}
                 selected={isSelected}
                 onClick={() => handleNavigationClick(entry)}
-                sx={styles.listItemButton(appBarExpanded, isSelected)}
+                sx={styles.listItemButton(true, isSelected)}
               >
-                <ListItemIcon
-                  sx={styles.listItemIcon(appBarExpanded, isSelected)}
-                >
+                <ListItemIcon sx={styles.listItemIcon(true, isSelected)}>
                   {entry.icon}
                 </ListItemIcon>
                 <ListItemText
                   primary={entry.title}
-                  sx={styles.listItemText(appBarExpanded, isSelected)}
+                  sx={styles.listItemText(true, isSelected)}
                 />
               </ListItemButton>
             );

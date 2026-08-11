@@ -27,7 +27,51 @@ class DdeManager {
     if (env?.DDE_PYTHON_EXE) {
       return env.DDE_PYTHON_EXE;
     }
+
+    const workspaceVenvPath = path.join(
+      '/home/nogi/nogi/data-definition-engine-ui',
+      '.venv',
+    );
+    const venvPythonPath =
+      process.platform === 'win32'
+        ? path.join(workspaceVenvPath, 'Scripts', 'python.exe')
+        : path.join(workspaceVenvPath, 'bin', 'python');
+
+    if (fs.existsSync(venvPythonPath)) {
+      return venvPythonPath;
+    }
+
     return process.platform === 'win32' ? 'python' : 'python3';
+  }
+
+  private getPythonEnv(env?: Record<string, string | undefined>) {
+    const pythonEnv = {
+      ...process.env,
+      ...env,
+      CDISC_API_KEY: env?.CDISC_API_KEY || process.env.CDISC_API_KEY,
+    } as Record<string, string | undefined>;
+
+    const workspaceVenvPath = path.join(
+      '/home/nogi/nogi/data-definition-engine-ui',
+      '.venv',
+    );
+    const venvBinPath =
+      process.platform === 'win32'
+        ? path.join(workspaceVenvPath, 'Scripts')
+        : path.join(workspaceVenvPath, 'bin');
+    const venvPythonPath =
+      process.platform === 'win32'
+        ? path.join(venvBinPath, 'python.exe')
+        : path.join(venvBinPath, 'python');
+
+    if (fs.existsSync(venvPythonPath)) {
+      pythonEnv.VIRTUAL_ENV = workspaceVenvPath;
+      pythonEnv.PATH = [venvBinPath, pythonEnv.PATH || '']
+        .filter(Boolean)
+        .join(path.delimiter);
+    }
+
+    return pythonEnv;
   }
 
   private getScriptPath(step: DdeRunRequest['step']) {
@@ -73,11 +117,7 @@ class DdeManager {
     const definePath = request.step === 'step3' ? outputPath : undefined;
     const child = spawn(pythonCommand, [scriptPath, ...request.args], {
       cwd: path.dirname(scriptPath),
-      env: {
-        ...process.env,
-        ...request.env,
-        CDISC_API_KEY: request.env?.CDISC_API_KEY || process.env.CDISC_API_KEY,
-      },
+      env: this.getPythonEnv(request.env),
     });
 
     this.runningProcesses.set(request.id, {
@@ -178,33 +218,38 @@ class DdeManager {
     ].join('; ');
 
     return new Promise((resolve) => {
-      execFile(pythonCommand, ['-c', script], (error, stdout, stderr) => {
-        if (error) {
+      execFile(
+        pythonCommand,
+        ['-c', script],
+        { env: this.getPythonEnv() },
+        (error, stdout, stderr) => {
+          if (error) {
+            resolve({
+              ok: false,
+              pythonCommand,
+              version: null,
+              missingModules: [],
+              error: stderr.trim() || error.message,
+            });
+            return;
+          }
+
+          const [versionLine = '', missingLine = ''] = stdout
+            .trim()
+            .split(/\r?\n/);
+          const missingModules = missingLine
+            ? missingLine.split('|').filter(Boolean)
+            : [];
+
           resolve({
-            ok: false,
+            ok: missingModules.length === 0,
             pythonCommand,
-            version: null,
-            missingModules: [],
-            error: stderr.trim() || error.message,
+            version: versionLine || null,
+            missingModules,
+            error: null,
           });
-          return;
-        }
-
-        const [versionLine = '', missingLine = ''] = stdout
-          .trim()
-          .split(/\r?\n/);
-        const missingModules = missingLine
-          ? missingLine.split('|').filter(Boolean)
-          : [];
-
-        resolve({
-          ok: missingModules.length === 0,
-          pythonCommand,
-          version: versionLine || null,
-          missingModules,
-          error: null,
-        });
-      });
+        },
+      );
     });
   };
 }
