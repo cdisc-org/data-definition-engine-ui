@@ -133,6 +133,17 @@ class DdeManager {
     return defineIndex >= 0 ? request.args[defineIndex + 1] : undefined;
   }
 
+  private formatCommandLine(
+    pythonCommand: string,
+    scriptPath: string,
+    args: string[],
+  ) {
+    const quoteArg = (value: string) =>
+      /\s/.test(value) ? `"${value.replace(/"/g, '\\"')}"` : value;
+
+    return [pythonCommand, '-u', scriptPath, ...args].map(quoteArg).join(' ');
+  }
+
   public runStep = async (
     event: IpcMainInvokeEvent,
     request: DdeRunRequest,
@@ -148,6 +159,11 @@ class DdeManager {
     );
     const outputPath = this.getOutputPath(request);
     const definePath = request.step === 'step3' ? outputPath : undefined;
+    const commandLine = this.formatCommandLine(
+      pythonCommand,
+      scriptPath,
+      request.args,
+    );
     const child = spawn(pythonCommand, ['-u', scriptPath, ...request.args], {
       cwd: path.dirname(scriptPath),
       env: {
@@ -165,6 +181,7 @@ class DdeManager {
       id: request.id,
       step: request.step,
       status: 'starting',
+      line: `Command: ${commandLine}`,
     });
 
     const forwardOutput = (stream: NodeJS.ReadableStream) => {

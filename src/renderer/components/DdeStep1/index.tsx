@@ -38,6 +38,12 @@ const styles = {
   },
 };
 
+const joinPath = (basePath: string, childPath: string) => {
+  const trimmedBase = basePath.replace(/[\\/]+$/, '');
+  const separator = trimmedBase.includes('\\') ? '\\' : '/';
+  return `${trimmedBase}${separator}${childPath}`;
+};
+
 const DdeStep1: React.FC = () => {
   const dispatch = useAppDispatch();
   const { apiService } = useContext(AppContext);
@@ -102,12 +108,12 @@ const DdeStep1: React.FC = () => {
 
     if (key === 'patchFile' && type === 'folder') {
       // If the user selected a folder for the patch file, we want to append "patch.yaml" to the path
-      result = `${result}/patch.yaml`;
+      result = joinPath(result as string, 'patch.yaml');
     }
 
     if (key === 'validationReportPath' && type === 'folder') {
       // If the user selected a folder for the validation report, we want to append "validation_report.xlsx" to the path
-      result = `${result}/validation_report.xlsx`;
+      result = joinPath(result as string, 'validation_report.xlsx');
     }
 
     updateConfig({
@@ -126,7 +132,7 @@ const DdeStep1: React.FC = () => {
       return;
     }
 
-    updateConfig({ outputTemplatePath: `${result}/define.json` });
+    updateConfig({ outputTemplatePath: joinPath(result, 'define.json') });
   };
 
   const pickRuntimeDirectory = async (

@@ -125,7 +125,16 @@ const DdeStep2: React.FC = () => {
   };
 
   return (
-    <Stack spacing={3} sx={styles.page}>
+    <Stack
+      spacing={3}
+      sx={{
+        ...styles.page,
+        minHeight: showExecutionView ? 'calc(100vh - 120px)' : 'auto',
+        display: showExecutionView ? 'flex' : 'block',
+        flexDirection: showExecutionView ? 'column' : undefined,
+        flex: showExecutionView ? 1 : undefined,
+      }}
+    >
       <div>
         <Typography variant="h4">Step 2</Typography>
         <Typography color="text.secondary">
@@ -203,8 +212,16 @@ const DdeStep2: React.FC = () => {
       ) : null}
 
       {showExecutionView ? (
-        <Stack spacing={2}>
-          <DdeExecution hideActions />
+        <Stack
+          spacing={2}
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <DdeExecution hideActions fullHeight />
           <Stack direction="row" spacing={1}>
             <Button variant="contained" onClick={handleContinueToStep3}>
               Continue to Step 3

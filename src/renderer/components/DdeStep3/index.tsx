@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import {
+  Box,
   Button,
   Card,
   CardContent,
@@ -141,7 +142,16 @@ const DdeStep3: React.FC = () => {
   };
 
   return (
-    <Stack spacing={3} sx={styles.page}>
+    <Stack
+      spacing={3}
+      sx={{
+        ...styles.page,
+        minHeight: showExecutionView ? 'calc(100vh - 120px)' : 'auto',
+        display: showExecutionView ? 'flex' : 'block',
+        flexDirection: showExecutionView ? 'column' : undefined,
+        flex: showExecutionView ? 1 : undefined,
+      }}
+    >
       <div>
         <Typography variant="h4">Step 3</Typography>
         <Typography color="text.secondary">
@@ -266,7 +276,9 @@ const DdeStep3: React.FC = () => {
       ) : null}
 
       {showExecutionView ? (
-        <DdeExecution hideActions fullHeight />
+        <Box sx={{ flex: 1, minHeight: 0 }}>
+          <DdeExecution hideActions fullHeight />
+        </Box>
       ) : (
         <DdeExecution />
       )}
