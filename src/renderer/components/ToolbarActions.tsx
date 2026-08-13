@@ -4,10 +4,10 @@ import ZoomInMapIcon from '@mui/icons-material/ZoomInMap';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness6Icon from '@mui/icons-material/Brightness6';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
-import ViewCompact from '@mui/icons-material/ViewCompact';
-import ViewCozy from '@mui/icons-material/ViewCozy';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { setZoomLevel } from '@redux/slices/ui';
-import { toggleColorMode, toggleCompactMode } from '@redux/slices/settings';
+import { toggleColorMode } from '@redux/slices/settings';
+import { resetDdeState } from '@redux/slices/dde';
 import { useAppDispatch, useAppSelector } from '@redux/hooks';
 
 const styles = {
@@ -25,13 +25,6 @@ const ToolbarActions: React.FC = () => {
   const dispatch = useAppDispatch();
   const currentZoomLevel = useAppSelector((state) => state.ui.zoomLevel);
   const colorMode = useAppSelector((state) => state.settings.other.colorMode);
-  const compactMode = useAppSelector(
-    (state) => state.settings.other.compactMode,
-  );
-
-  const handleToggleCompactMode = useCallback(() => {
-    dispatch(toggleCompactMode());
-  }, [dispatch]);
 
   const handleResetZoom = useCallback(() => {
     dispatch(setZoomLevel(0));
@@ -39,6 +32,10 @@ const ToolbarActions: React.FC = () => {
 
   const handleToggleTheme = useCallback(() => {
     dispatch(toggleColorMode());
+  }, [dispatch]);
+
+  const handleResetDdeState = useCallback(() => {
+    dispatch(resetDdeState());
   }, [dispatch]);
 
   return (
@@ -54,13 +51,13 @@ const ToolbarActions: React.FC = () => {
           </IconButton>
         </Tooltip>
       )}
-      <Tooltip title="Toggle compact mode" enterDelay={1000} placement="left">
-        <IconButton onClick={handleToggleCompactMode}>
-          {compactMode ? (
-            <ViewCozy sx={styles.iconColor} />
-          ) : (
-            <ViewCompact sx={styles.iconColor} />
-          )}
+      <Tooltip title="Reset DDE settings" enterDelay={1000} placement="left">
+        <IconButton
+          onClick={handleResetDdeState}
+          id="resetDdeState"
+          size="small"
+        >
+          <RestartAltIcon sx={styles.iconColor} />
         </IconButton>
       </Tooltip>
       <Tooltip

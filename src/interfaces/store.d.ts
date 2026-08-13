@@ -12,10 +12,12 @@ export interface ISettings {
     colorMode: ThemeModePreference;
     themePalette: ThemePalette;
     compactMode: boolean;
-    loadingAnimation: 'santa' | 'cat' | 'dog' | 'normal' | 'random';
+    loadingAnimation: 'normal';
     dragoverAnimation: boolean;
     disableUiAnimation: boolean;
     pythonCommand: string;
+    ddeScriptsPath: string;
+    pythonVenvPath: string;
   };
 }
 

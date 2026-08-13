@@ -2,6 +2,7 @@ import {
   DefineFileInfo,
   DefineXmlContent,
   DdeRunRequest,
+  DdeRuntimePaths,
   FileInfo,
   ILocalStore,
   IStore,
@@ -53,20 +54,22 @@ class ApiService {
   public openDefineXml = async (
     filePath?: string,
   ): Promise<DefineFileInfo | null> => {
-    let defineFileInfo: DefineFileInfo | null = null;
     if (filePath !== undefined) {
-      defineFileInfo =
-        this.openedDefines.find((define) => define.fullPath === filePath) ||
-        null;
+      const existingId = this.openedDefines.find(
+        (define) => define.fullPath === filePath,
+      )?.fileId;
+      if (existingId) {
+        delete this.openedDefineContents[existingId];
+      }
     }
 
+    const defineFileInfo = await window.electron.openDefineXml(filePath);
     if (defineFileInfo !== null) {
-      return defineFileInfo;
-    }
-
-    defineFileInfo = await window.electron.openDefineXml(filePath);
-    if (defineFileInfo !== null) {
+      this.openedDefines = this.openedDefines.filter(
+        (define) => define.fullPath !== defineFileInfo.fullPath,
+      );
       this.openedDefines.push(defineFileInfo);
+      delete this.openedDefineContents[defineFileInfo.fileId];
     }
     return defineFileInfo;
   };
@@ -130,8 +133,10 @@ class ApiService {
     return window.electron.stopDdeStep(id);
   };
 
-  public checkPython = async (): Promise<PythonCheckResult> => {
-    return window.electron.checkPython();
+  public checkPython = async (
+    runtimePaths?: DdeRuntimePaths,
+  ): Promise<PythonCheckResult> => {
+    return window.electron.checkPython(runtimePaths);
   };
 }
 

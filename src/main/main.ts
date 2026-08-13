@@ -187,7 +187,7 @@ app
 
     const storeManager = new StoreManager();
     const defineXmlManager = new DefineXmlManager();
-    const ddeManager = new DdeManager({ resourcesPath: RESOURCES_PATH });
+    const ddeManager = new DdeManager({ resourcesPath: '' });
 
     ipcMain.handle('main:writeToClipboard', writeToClipboard);
     ipcMain.handle('main:setZoom', async (event, zoomLevel: number) => {

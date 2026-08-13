@@ -108,8 +108,8 @@ const onDdeProgress: ElectronApi['onDdeProgress'] = (callback) => {
   };
 };
 
-const checkPython: ElectronApi['checkPython'] = () =>
-  ipcRenderer.invoke('main:checkPython');
+const checkPython: ElectronApi['checkPython'] = (runtimePaths) =>
+  ipcRenderer.invoke('main:checkPython', runtimePaths);
 
 contextBridge.exposeInMainWorld('electron', {
   writeToClipboard,

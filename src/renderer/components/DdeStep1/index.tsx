@@ -26,6 +26,7 @@ import {
   startDdeRun,
 } from '@redux/slices/dde';
 import { openSnackbar, setPathname } from '@redux/slices/ui';
+import { setSettings } from '@redux/slices/settings';
 import DdeExecution from '@components/DdeExecution';
 import { buildLoaderArgs } from '@utils/buildLoaderArgs';
 import { paths } from '@/misc/constants';
@@ -37,12 +38,19 @@ const styles = {
   },
 };
 
+const joinPath = (basePath: string, childPath: string) => {
+  const trimmedBase = basePath.replace(/[\\/]+$/, '');
+  const separator = trimmedBase.includes('\\') ? '\\' : '/';
+  return `${trimmedBase}${separator}${childPath}`;
+};
+
 const DdeStep1: React.FC = () => {
   const dispatch = useAppDispatch();
   const { apiService } = useContext(AppContext);
   const config = useAppSelector((state) => state.dde.step1);
   const run = useAppSelector((state) => state.dde.run);
   const pythonCheck = useAppSelector((state) => state.dde.pythonCheck);
+  const settings = useAppSelector((state) => state.settings.other);
   const [runSnapshot, setRunSnapshot] = useState<Partial<typeof config> | null>(
     null,
   );
@@ -51,20 +59,34 @@ const DdeStep1: React.FC = () => {
   );
 
   useEffect(() => {
-    if (pythonCheck !== null) {
-      return;
-    }
+    let isCancelled = false;
 
     const runCheck = async () => {
-      const result = await apiService.checkPython();
-      dispatch(setPythonCheck(result));
+      dispatch(setPythonCheck(null));
+
+      const result = await apiService.checkPython({
+        ddeScriptsPath: settings.ddeScriptsPath || undefined,
+        pythonVenvPath: settings.pythonVenvPath || undefined,
+      });
+
+      if (!isCancelled) {
+        dispatch(setPythonCheck(result));
+      }
     };
 
     runCheck();
-  }, [apiService, dispatch, pythonCheck]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [apiService, dispatch, settings.ddeScriptsPath, settings.pythonVenvPath]);
 
   const updateConfig = (next: Partial<typeof config>) => {
     dispatch(setStep1Config(next));
+  };
+
+  const updateSetting = (next: Partial<typeof settings>) => {
+    dispatch(setSettings({ other: next }));
   };
 
   const pickFile = async (
@@ -85,6 +107,16 @@ const DdeStep1: React.FC = () => {
       }
     }
 
+    if (key === 'patchFile' && type === 'folder') {
+      // If the user selected a folder for the patch file, we want to append "patch.yaml" to the path
+      result = joinPath(result as string, 'patch.yaml');
+    }
+
+    if (key === 'validationReportPath' && type === 'folder') {
+      // If the user selected a folder for the validation report, we want to append "validation_report.xlsx" to the path
+      result = joinPath(result as string, 'validation_report.xlsx');
+    }
+
     updateConfig({
       [key]:
         type === 'file'
@@ -101,7 +133,18 @@ const DdeStep1: React.FC = () => {
       return;
     }
 
-    updateConfig({ outputTemplatePath: `${result}/define.json` });
+    updateConfig({ outputTemplatePath: joinPath(result, 'define.json') });
+  };
+
+  const pickRuntimeDirectory = async (
+    key: 'ddeScriptsPath' | 'pythonVenvPath',
+  ) => {
+    const result = await apiService.openDirectoryDialog(settings[key] || null);
+    if (!result) {
+      return;
+    }
+
+    updateSetting({ [key]: result } as Partial<typeof settings>);
   };
 
   const runStep = async () => {
@@ -134,6 +177,10 @@ const DdeStep1: React.FC = () => {
         CDISC_API_KEY: config.cdiscApiKey || undefined,
         DDE_PYTHON_EXE: pythonCommand || undefined,
       },
+      runtimePaths: {
+        ddeScriptsPath: settings.ddeScriptsPath || undefined,
+        pythonVenvPath: settings.pythonVenvPath || undefined,
+      },
     });
 
     if ('error' in result) {
@@ -142,7 +189,26 @@ const DdeStep1: React.FC = () => {
   };
 
   const handleContinueToStep2 = () => {
+    // Reset execution status and log
+    dispatch(clearDdeRun());
     dispatch(setPathname({ pathname: paths.STEP2 }));
+  };
+
+  const handleOpenPatchFile = async () => {
+    if (!config.patchFile) {
+      return;
+    }
+
+    const result = await apiService.openFileInDefaultApp(config.patchFile);
+    dispatch(
+      openSnackbar({
+        type: result === '' ? 'success' : 'error',
+        message:
+          result === ''
+            ? `Opened ${config.patchFile}`
+            : `Unable to open ${config.patchFile}: ${result}`,
+      }),
+    );
   };
 
   const handleCancel = async () => {
@@ -174,7 +240,7 @@ const DdeStep1: React.FC = () => {
         </Typography>
       </Box>
 
-      {pythonCheck ? (
+      {!showExecutionView && pythonCheck ? (
         <Alert severity={pythonCheck.ok ? 'success' : 'warning'}>
           {pythonCheck.ok
             ? `Using ${pythonCheck.pythonCommand} (${pythonCheck.version})`
@@ -186,6 +252,68 @@ const DdeStep1: React.FC = () => {
         <Card>
           <CardContent>
             <Stack spacing={3}>
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Runtime Paths
+                </Typography>
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      label="Path to DDE Scripts"
+                      value={settings.ddeScriptsPath}
+                      onChange={(event) =>
+                        updateSetting({ ddeScriptsPath: event.target.value })
+                      }
+                      slotProps={{
+                        input: {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                edge="end"
+                                aria-label="Choose DDE scripts path"
+                                onClick={() =>
+                                  pickRuntimeDirectory('ddeScriptsPath')
+                                }
+                              >
+                                <FolderOpen />
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                  </Grid>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      label="Path to Python VENV"
+                      value={settings.pythonVenvPath}
+                      onChange={(event) =>
+                        updateSetting({ pythonVenvPath: event.target.value })
+                      }
+                      slotProps={{
+                        input: {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                edge="end"
+                                aria-label="Choose Python venv path"
+                                onClick={() =>
+                                  pickRuntimeDirectory('pythonVenvPath')
+                                }
+                              >
+                                <FolderOpen />
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                    />
+                  </Grid>
+                </Grid>
+              </Box>
+
               <Box>
                 <Typography variant="h6" gutterBottom>
                   Inputs
@@ -331,21 +459,6 @@ const DdeStep1: React.FC = () => {
                       <MenuItem value="v2">v2</MenuItem>
                     </TextField>
                   </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={config.noSslVerify}
-                          onChange={(event) =>
-                            updateConfig({
-                              noSslVerify: event.target.checked,
-                            })
-                          }
-                        />
-                      }
-                      label="Disable SSL Verify"
-                    />
-                  </Grid>
                 </Grid>
               </Box>
 
@@ -437,7 +550,7 @@ const DdeStep1: React.FC = () => {
                   <Grid size={{ xs: 12 }}>
                     <TextField
                       fullWidth
-                      label="Patch File Folder"
+                      label="Patch File"
                       value={config.patchFile}
                       onChange={(event) =>
                         updateConfig({ patchFile: event.target.value })
@@ -470,21 +583,28 @@ const DdeStep1: React.FC = () => {
 
       {showExecutionView ? (
         <Stack spacing={2} sx={{ flex: 1, minHeight: 0 }}>
-          <Stack
-            direction="row"
-            spacing={1}
-            sx={{ justifyContent: 'flex-end' }}
-          >
-            <Button variant="contained" onClick={handleContinueToStep2}>
+          <Box sx={{ flex: 1, minHeight: 0 }}>
+            <DdeExecution hideActions fullHeight />
+          </Box>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              onClick={handleContinueToStep2}
+              disabled={run.status !== 'done'}
+            >
               Continue to Step 2
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={handleOpenPatchFile}
+              disabled={run.status !== 'done' || !config.patchFile}
+            >
+              Open patch file
             </Button>
             <Button variant="outlined" onClick={handleCancel}>
               Cancel
             </Button>
           </Stack>
-          <Box sx={{ flex: 1, minHeight: 0 }}>
-            <DdeExecution hideActions fullHeight />
-          </Box>
         </Stack>
       ) : (
         <>

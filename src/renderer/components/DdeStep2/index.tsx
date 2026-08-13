@@ -14,7 +14,12 @@ import {
 import { InsertDriveFile } from '@mui/icons-material';
 import AppContext from '@utils/AppContext';
 import { useAppDispatch, useAppSelector } from '@redux/hooks';
-import { failDdeRun, setStep2Config, startDdeRun } from '@redux/slices/dde';
+import {
+  clearDdeRun,
+  failDdeRun,
+  setStep2Config,
+  startDdeRun,
+} from '@redux/slices/dde';
 import { openSnackbar, setPathname } from '@redux/slices/ui';
 import DdeExecution from '@components/DdeExecution';
 import { buildLoaderArgs } from '@utils/buildLoaderArgs';
@@ -31,6 +36,8 @@ const DdeStep2: React.FC = () => {
   const { apiService } = useContext(AppContext);
   const step1 = useAppSelector((state) => state.dde.step1);
   const config = useAppSelector((state) => state.dde.step2);
+  const run = useAppSelector((state) => state.dde.run);
+  const settings = useAppSelector((state) => state.settings.other);
   const pythonCommand = useAppSelector(
     (state) => state.settings.other.pythonCommand,
   );
@@ -48,6 +55,22 @@ const DdeStep2: React.FC = () => {
     }
 
     updateConfig({ applyPatch: result[0].fullPath });
+  };
+
+  const showExecutionView = run.status !== 'idle';
+
+  const handleContinueToStep3 = () => {
+    dispatch(clearDdeRun());
+    dispatch(setPathname({ pathname: paths.STEP3 }));
+  };
+
+  const handleCancel = async () => {
+    if (run.id) {
+      await apiService.stopDdeStep(run.id);
+    }
+
+    dispatch(clearDdeRun());
+    dispatch(setPathname({ pathname: paths.STEP2 }));
   };
 
   const runStep = async () => {
@@ -76,7 +99,7 @@ const DdeStep2: React.FC = () => {
     const args = [
       ...buildLoaderArgs(step1),
       '--patch_file',
-      config.applyPatch,
+      step1.patchFile,
       '--apply_patch',
       config.applyPatch,
     ];
@@ -90,6 +113,10 @@ const DdeStep2: React.FC = () => {
         CDISC_API_KEY: step1.cdiscApiKey || undefined,
         DDE_PYTHON_EXE: pythonCommand || undefined,
       },
+      runtimePaths: {
+        ddeScriptsPath: settings.ddeScriptsPath || undefined,
+        pythonVenvPath: settings.pythonVenvPath || undefined,
+      },
     });
 
     if ('error' in result) {
@@ -98,7 +125,16 @@ const DdeStep2: React.FC = () => {
   };
 
   return (
-    <Stack spacing={3} sx={styles.page}>
+    <Stack
+      spacing={3}
+      sx={{
+        ...styles.page,
+        minHeight: showExecutionView ? 'calc(100vh - 120px)' : 'auto',
+        display: showExecutionView ? 'flex' : 'block',
+        flexDirection: showExecutionView ? 'column' : undefined,
+        flex: showExecutionView ? 1 : undefined,
+      }}
+    >
       <div>
         <Typography variant="h4">Step 2</Typography>
         <Typography color="text.secondary">
@@ -107,82 +143,102 @@ const DdeStep2: React.FC = () => {
         </Typography>
       </div>
 
-      {!step1.usdmPath || !step1.outputTemplatePath || !step1.sdtmct ? (
+      {!showExecutionView &&
+      !step1.usdmPath &&
+      !step1.outputTemplatePath &&
+      !step1.sdtmct ? (
         <Alert severity="warning">
           Complete Step 1 first so the USDM file, DDS output path, and SDTM CT
           date can be reused to regenerate the template.
         </Alert>
       ) : null}
 
-      <Card>
-        <CardContent>
-          <Grid container spacing={2}>
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                label="Apply Patch File"
-                value={config.applyPatch}
-                onChange={(event) =>
-                  updateConfig({ applyPatch: event.target.value })
-                }
-                slotProps={{
-                  input: {
-                    endAdornment: (
-                      <InputAdornment position="end">
-                        <IconButton
-                          edge="end"
-                          aria-label="Choose apply patch file"
-                          onClick={pickApplyPatch}
-                        >
-                          <InsertDriveFile />
-                        </IconButton>
-                      </InputAdornment>
-                    ),
-                  },
-                }}
-              />
+      {!showExecutionView ? (
+        <Card>
+          <CardContent>
+            <Grid container spacing={2}>
+              <Grid size={{ xs: 12 }}>
+                <TextField
+                  fullWidth
+                  label="Apply Patch File"
+                  value={config.applyPatch}
+                  onChange={(event) =>
+                    updateConfig({ applyPatch: event.target.value })
+                  }
+                  slotProps={{
+                    input: {
+                      endAdornment: (
+                        <InputAdornment position="end">
+                          <IconButton
+                            edge="end"
+                            aria-label="Choose apply patch file"
+                            onClick={pickApplyPatch}
+                          >
+                            <InsertDriveFile />
+                          </IconButton>
+                        </InputAdornment>
+                      ),
+                    },
+                  }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <TextField
+                  fullWidth
+                  label="USDM JSON"
+                  value={step1.usdmPath}
+                  slotProps={{ input: { readOnly: true } }}
+                />
+              </Grid>
+              <Grid size={{ xs: 12 }}>
+                <TextField
+                  fullWidth
+                  label="DDS JSON Output"
+                  value={step1.outputTemplatePath}
+                  slotProps={{ input: { readOnly: true } }}
+                />
+              </Grid>
             </Grid>
-            <Grid size={{ xs: 12, md: 8 }}>
-              <TextField
-                fullWidth
-                label="USDM JSON"
-                value={step1.usdmPath}
-                slotProps={{ input: { readOnly: true } }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
-              <TextField
-                fullWidth
-                label="SDTM CT"
-                value={step1.sdtmct}
-                slotProps={{ input: { readOnly: true } }}
-              />
-            </Grid>
-            <Grid size={{ xs: 12 }}>
-              <TextField
-                fullWidth
-                label="DDS JSON Output"
-                value={step1.outputTemplatePath}
-                slotProps={{ input: { readOnly: true } }}
-              />
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      ) : null}
 
-      <Stack direction="row" spacing={1}>
-        <Button variant="contained" onClick={runStep}>
-          Run Step 2
-        </Button>
-        <Button
-          variant="outlined"
-          onClick={() => dispatch(setPathname({ pathname: paths.STEP3 }))}
+      {showExecutionView ? (
+        <Stack
+          spacing={2}
+          sx={{
+            flex: 1,
+            minHeight: 0,
+            display: 'flex',
+            flexDirection: 'column',
+          }}
         >
-          Skip to Step 3
-        </Button>
-      </Stack>
-
-      <DdeExecution />
+          <DdeExecution hideActions fullHeight />
+          <Stack direction="row" spacing={1}>
+            <Button variant="contained" onClick={handleContinueToStep3}>
+              Continue to Step 3
+            </Button>
+            <Button variant="outlined" onClick={handleCancel}>
+              Cancel
+            </Button>
+          </Stack>
+        </Stack>
+      ) : (
+        <>
+          <DdeExecution />
+          <Stack direction="row" spacing={1}>
+            <Button variant="contained" onClick={runStep}>
+              Run Step 2
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={() => dispatch(setPathname({ pathname: paths.STEP3 }))}
+            >
+              Skip to Step 3
+            </Button>
+          </Stack>
+        </>
+      )}
     </Stack>
   );
 };
