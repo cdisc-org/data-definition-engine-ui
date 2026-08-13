@@ -82,8 +82,6 @@ export const ddeSlice = createSlice({
         if (event.step === 'step1') {
           state.step1.ddsJsonPath = event.outputPath;
           state.step1.outputTemplatePath = event.outputPath;
-          state.step2.applyPatch =
-            state.step1.patchFile || state.step2.applyPatch;
           state.step3.templatePath = event.outputPath;
         }
         if (event.step === 'step2') {
@@ -117,6 +115,13 @@ export const ddeSlice = createSlice({
     clearDdeRun: (state) => {
       state.run = initialDde.run;
     },
+    resetDdeState: (state) => {
+      state.step1 = { ...initialDde.step1 };
+      state.step2 = { ...initialDde.step2 };
+      state.step3 = { ...initialDde.step3 };
+      state.run = { ...initialDde.run };
+      state.pythonCheck = initialDde.pythonCheck;
+    },
   },
 });
 
@@ -129,6 +134,7 @@ export const {
   applyDdeProgress,
   failDdeRun,
   clearDdeRun,
+  resetDdeState,
 } = ddeSlice.actions;
 
 export default ddeSlice.reducer;

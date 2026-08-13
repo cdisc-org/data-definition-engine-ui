@@ -99,7 +99,7 @@ const DdeStep2: React.FC = () => {
     const args = [
       ...buildLoaderArgs(step1),
       '--patch_file',
-      config.applyPatch,
+      step1.patchFile,
       '--apply_patch',
       config.applyPatch,
     ];
@@ -182,19 +182,11 @@ const DdeStep2: React.FC = () => {
                   }}
                 />
               </Grid>
-              <Grid size={{ xs: 12, md: 8 }}>
+              <Grid size={{ xs: 12 }}>
                 <TextField
                   fullWidth
                   label="USDM JSON"
                   value={step1.usdmPath}
-                  slotProps={{ input: { readOnly: true } }}
-                />
-              </Grid>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <TextField
-                  fullWidth
-                  label="SDTM CT"
-                  value={step1.sdtmct}
                   slotProps={{ input: { readOnly: true } }}
                 />
               </Grid>

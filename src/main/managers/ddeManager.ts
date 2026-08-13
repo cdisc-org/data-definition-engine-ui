@@ -181,7 +181,7 @@ class DdeManager {
       id: request.id,
       step: request.step,
       status: 'starting',
-      line: `Command: ${commandLine}`,
+      line: `>_ ${commandLine}\n`,
     });
 
     const forwardOutput = (stream: NodeJS.ReadableStream) => {
@@ -228,6 +228,7 @@ class DdeManager {
         exitCode,
         outputPath,
         definePath,
+        line: `Process exited with code ${exitCode}\n`,
         error:
           status === 'error'
             ? `Process exited with code ${exitCode}`

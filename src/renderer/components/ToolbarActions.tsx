@@ -4,8 +4,10 @@ import ZoomInMapIcon from '@mui/icons-material/ZoomInMap';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness6Icon from '@mui/icons-material/Brightness6';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import { setZoomLevel } from '@redux/slices/ui';
 import { toggleColorMode } from '@redux/slices/settings';
+import { resetDdeState } from '@redux/slices/dde';
 import { useAppDispatch, useAppSelector } from '@redux/hooks';
 
 const styles = {
@@ -32,6 +34,10 @@ const ToolbarActions: React.FC = () => {
     dispatch(toggleColorMode());
   }, [dispatch]);
 
+  const handleResetDdeState = useCallback(() => {
+    dispatch(resetDdeState());
+  }, [dispatch]);
+
   return (
     <Stack sx={styles.main} direction="row" spacing={1}>
       {currentZoomLevel !== 0 && (
@@ -45,6 +51,15 @@ const ToolbarActions: React.FC = () => {
           </IconButton>
         </Tooltip>
       )}
+      <Tooltip title="Reset DDE settings" enterDelay={1000} placement="left">
+        <IconButton
+          onClick={handleResetDdeState}
+          id="resetDdeState"
+          size="small"
+        >
+          <RestartAltIcon sx={styles.iconColor} />
+        </IconButton>
+      </Tooltip>
       <Tooltip
         title={`Change color mode to ${colorMode === 'dark' ? 'light' : colorMode === 'light' ? 'system' : 'dark'}`}
         enterDelay={1000}

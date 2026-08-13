@@ -9,6 +9,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
+import TerminalIcon from '@mui/icons-material/Terminal';
 import AppContext from '@utils/AppContext';
 import { useAppDispatch, useAppSelector } from '@redux/hooks';
 import { clearDdeRun } from '@redux/slices/dde';
@@ -18,7 +19,7 @@ const styles = {
     borderRadius: 3,
   },
   logBox: (fullHeight: boolean) => ({
-    fontFamily: 'Roboto Mono, monospace',
+    fontFamily: 'Consolas, "SFMono-Regular", "Liberation Mono", monospace',
     fontSize: 13,
     lineHeight: 1.5,
     backgroundColor: 'grey.950',
@@ -32,6 +33,22 @@ const styles = {
     whiteSpace: 'pre-wrap',
     flex: fullHeight ? 1 : 'auto',
   }),
+  commandPrompt: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 20,
+    height: 20,
+    mr: 1,
+    flexShrink: 0,
+    '& > svg': {
+      fontSize: 20,
+      display: 'block',
+      margin: 0,
+      lineHeight: 1,
+      transform: 'translateY(5px)',
+    },
+  },
 };
 
 interface DdeExecutionProps {
@@ -68,12 +85,49 @@ const DdeExecution: React.FC<DdeExecutionProps> = ({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   }, [elapsedMs]);
 
-  const logContent =
+  const logLines =
     run.lines.length > 0
-      ? run.lines.join('\n')
+      ? run.lines
       : ['starting', 'running'].includes(run.status)
-        ? 'Waiting for process output...'
-        : `Execution finished with status ${run.status}`;
+        ? ['Waiting for process output...']
+        : [`Execution finished with status ${run.status}`];
+
+  const renderLogLine = (line: string, index: number) => {
+    const promptMatch = /^>_\s+(.*)\n$/.exec(line);
+
+    if (promptMatch) {
+      return (
+        <Box
+          component="div"
+          key={`${line}-${index}`}
+          sx={{ whiteSpace: 'pre-wrap' }}
+        >
+          <Box component="span" sx={styles.commandPrompt}>
+            <TerminalIcon />
+          </Box>
+          <Box
+            component="span"
+            sx={{
+              fontFamily:
+                'Consolas, "SFMono-Regular", "Liberation Mono", monospace',
+            }}
+          >
+            {promptMatch[1]}
+          </Box>
+        </Box>
+      );
+    }
+
+    return (
+      <Box
+        component="div"
+        key={`${line}-${index}`}
+        sx={{ whiteSpace: 'pre-wrap' }}
+      >
+        {line}
+      </Box>
+    );
+  };
 
   if (run.status === 'idle') {
     return null;
@@ -103,7 +157,9 @@ const DdeExecution: React.FC<DdeExecutionProps> = ({
             <Chip size="small" variant="outlined" label={elapsedLabel} />
           </Stack>
           {run.error ? <Alert severity="error">{run.error}</Alert> : null}
-          <Box sx={styles.logBox(fullHeight)}>{logContent}</Box>
+          <Box sx={styles.logBox(fullHeight)}>
+            {logLines.map(renderLogLine)}
+          </Box>
           {!hideActions ? (
             <Stack direction="row" spacing={1}>
               {['starting', 'running'].includes(run.status) ? (

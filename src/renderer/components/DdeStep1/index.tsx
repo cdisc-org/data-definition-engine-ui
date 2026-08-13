@@ -59,26 +59,27 @@ const DdeStep1: React.FC = () => {
   );
 
   useEffect(() => {
-    if (pythonCheck !== null) {
-      return;
-    }
+    let isCancelled = false;
 
     const runCheck = async () => {
+      dispatch(setPythonCheck(null));
+
       const result = await apiService.checkPython({
         ddeScriptsPath: settings.ddeScriptsPath || undefined,
         pythonVenvPath: settings.pythonVenvPath || undefined,
       });
-      dispatch(setPythonCheck(result));
+
+      if (!isCancelled) {
+        dispatch(setPythonCheck(result));
+      }
     };
 
     runCheck();
-  }, [
-    apiService,
-    dispatch,
-    pythonCheck,
-    settings.ddeScriptsPath,
-    settings.pythonVenvPath,
-  ]);
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [apiService, dispatch, settings.ddeScriptsPath, settings.pythonVenvPath]);
 
   const updateConfig = (next: Partial<typeof config>) => {
     dispatch(setStep1Config(next));
@@ -191,6 +192,23 @@ const DdeStep1: React.FC = () => {
     // Reset execution status and log
     dispatch(clearDdeRun());
     dispatch(setPathname({ pathname: paths.STEP2 }));
+  };
+
+  const handleOpenPatchFile = async () => {
+    if (!config.patchFile) {
+      return;
+    }
+
+    const result = await apiService.openFileInDefaultApp(config.patchFile);
+    dispatch(
+      openSnackbar({
+        type: result === '' ? 'success' : 'error',
+        message:
+          result === ''
+            ? `Opened ${config.patchFile}`
+            : `Unable to open ${config.patchFile}: ${result}`,
+      }),
+    );
   };
 
   const handleCancel = async () => {
@@ -441,21 +459,6 @@ const DdeStep1: React.FC = () => {
                       <MenuItem value="v2">v2</MenuItem>
                     </TextField>
                   </Grid>
-                  <Grid size={{ xs: 12 }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={config.noSslVerify}
-                          onChange={(event) =>
-                            updateConfig({
-                              noSslVerify: event.target.checked,
-                            })
-                          }
-                        />
-                      }
-                      label="Disable SSL Verify"
-                    />
-                  </Grid>
                 </Grid>
               </Box>
 
@@ -547,7 +550,7 @@ const DdeStep1: React.FC = () => {
                   <Grid size={{ xs: 12 }}>
                     <TextField
                       fullWidth
-                      label="Patch File Folder"
+                      label="Patch File"
                       value={config.patchFile}
                       onChange={(event) =>
                         updateConfig({ patchFile: event.target.value })
@@ -590,6 +593,13 @@ const DdeStep1: React.FC = () => {
               disabled={run.status !== 'done'}
             >
               Continue to Step 2
+            </Button>
+            <Button
+              variant="outlined"
+              onClick={handleOpenPatchFile}
+              disabled={run.status !== 'done' || !config.patchFile}
+            >
+              Open patch file
             </Button>
             <Button variant="outlined" onClick={handleCancel}>
               Cancel
