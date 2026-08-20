@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useState } from 'react';
 import {
   Alert,
   Box,
@@ -15,7 +15,12 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { FolderOpen, InsertDriveFile } from '@mui/icons-material';
+import {
+  FolderOpen,
+  InsertDriveFile,
+  Visibility,
+  VisibilityOff,
+} from '@mui/icons-material';
 import AppContext from '@utils/AppContext';
 import { useAppDispatch, useAppSelector } from '@redux/hooks';
 import {
@@ -54,32 +59,25 @@ const DdeStep1: React.FC = () => {
   const [runSnapshot, setRunSnapshot] = useState<Partial<typeof config> | null>(
     null,
   );
+  const [cdiscApiKeyVisible, setCdiscApiKeyVisible] = useState(false);
   const pythonCommand = useAppSelector(
     (state) => state.settings.other.pythonCommand,
   );
 
-  useEffect(() => {
-    let isCancelled = false;
+  const runPythonCheck = useCallback(async () => {
+    dispatch(setPythonCheck(null));
 
-    const runCheck = async () => {
-      dispatch(setPythonCheck(null));
+    const result = await apiService.checkPython({
+      ddeScriptsPath: settings.ddeScriptsPath || undefined,
+      pythonVenvPath: settings.pythonVenvPath || undefined,
+    });
 
-      const result = await apiService.checkPython({
-        ddeScriptsPath: settings.ddeScriptsPath || undefined,
-        pythonVenvPath: settings.pythonVenvPath || undefined,
-      });
-
-      if (!isCancelled) {
-        dispatch(setPythonCheck(result));
-      }
-    };
-
-    runCheck();
-
-    return () => {
-      isCancelled = true;
-    };
+    dispatch(setPythonCheck(result));
   }, [apiService, dispatch, settings.ddeScriptsPath, settings.pythonVenvPath]);
+
+  useEffect(() => {
+    runPythonCheck();
+  }, [runPythonCheck]);
 
   const updateConfig = (next: Partial<typeof config>) => {
     dispatch(setStep1Config(next));
@@ -241,7 +239,20 @@ const DdeStep1: React.FC = () => {
       </Box>
 
       {!showExecutionView && pythonCheck ? (
-        <Alert severity={pythonCheck.ok ? 'success' : 'warning'}>
+        <Alert
+          severity={pythonCheck.ok ? 'success' : 'warning'}
+          action={
+            <Button
+              color="inherit"
+              size="small"
+              onClick={() => {
+                runPythonCheck();
+              }}
+            >
+              Run Check
+            </Button>
+          }
+        >
           {pythonCheck.ok
             ? `Using ${pythonCheck.pythonCommand} (${pythonCheck.version})`
             : `Python check failed for ${pythonCheck.pythonCommand}${pythonCheck.error ? `: ${pythonCheck.error}` : ''}${pythonCheck.missingModules.length > 0 ? `. Missing modules: ${pythonCheck.missingModules.join(', ')}` : ''}`}
@@ -368,7 +379,7 @@ const DdeStep1: React.FC = () => {
                       ))}
                     </TextField>
                   </Grid>
-                  <Grid size={{ xs: 3, md: 1 }}>
+                  <Grid size={{ xs: 3, md: 2 }}>
                     <TextField
                       select
                       fullWidth
@@ -383,7 +394,7 @@ const DdeStep1: React.FC = () => {
                       <MenuItem value="3.2">3.2</MenuItem>
                     </TextField>
                   </Grid>
-                  <Grid size={{ xs: 3, md: 1 }}>
+                  <Grid size={{ xs: 3, md: 2 }}>
                     <TextField
                       fullWidth
                       label="Study Version"
@@ -393,7 +404,7 @@ const DdeStep1: React.FC = () => {
                       }
                     />
                   </Grid>
-                  <Grid size={{ xs: 3, md: 1 }}>
+                  <Grid size={{ xs: 3, md: 2 }}>
                     <TextField
                       fullWidth
                       label="Study Design"
@@ -403,7 +414,7 @@ const DdeStep1: React.FC = () => {
                       }
                     />
                   </Grid>
-                  <Grid size={{ xs: 3, md: 1 }}>
+                  <Grid size={{ xs: 3, md: 2 }}>
                     <TextField
                       fullWidth
                       label="Doc Version"
@@ -437,12 +448,33 @@ const DdeStep1: React.FC = () => {
                   <Grid size={{ xs: 6, md: 4 }}>
                     <TextField
                       fullWidth
-                      type="password"
                       label="Key"
                       value={config.cdiscApiKey}
                       onChange={(event) =>
                         updateConfig({ cdiscApiKey: event.target.value })
                       }
+                      slotProps={{
+                        input: {
+                          endAdornment: (
+                            <InputAdornment position="end">
+                              <IconButton
+                                edge="end"
+                                aria-label="Show password"
+                                onClick={() =>
+                                  setCdiscApiKeyVisible(!cdiscApiKeyVisible)
+                                }
+                              >
+                                {cdiscApiKeyVisible ? (
+                                  <VisibilityOff />
+                                ) : (
+                                  <Visibility />
+                                )}
+                              </IconButton>
+                            </InputAdornment>
+                          ),
+                        },
+                      }}
+                      type={cdiscApiKeyVisible ? 'text' : 'password'}
                     />
                   </Grid>
                   <Grid size={{ xs: 4, md: 1 }}>

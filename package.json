@@ -246,15 +246,19 @@
             ],
             "publish": {
                 "provider": "github",
-                "owner": "defineEditor",
-                "repo": "vde-dataset-viewer"
+                "owner": "cdisc",
+                "repo": "data-definition-engine-ui"
             }
         },
         "linux": {
             "target": [
-                "AppImage"
+                "AppImage",
+                "deb"
             ],
-            "category": "Viewer"
+            "category": "Viewer",
+            "executableArgs": [
+                "--disable-setuid-sandbox"
+            ]
         },
         "directories": {
             "app": "release/app",
@@ -266,8 +270,8 @@
         ],
         "publish": {
             "provider": "github",
-            "owner": "defineEditor",
-            "repo": "vde-dataset-viewer"
+            "owner": "cdisc",
+            "repo": "data-definition-engine-ui"
         }
     },
     "engines": {
