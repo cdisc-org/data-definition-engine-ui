@@ -177,11 +177,17 @@ class DdeManager {
       stopRequested: false,
     });
 
+    // If there is a CDISC API key in the command, replace it with a placeholder in the log output to avoid exposing sensitive information.
+    const sanitizedCommandLine = commandLine.replace(
+      /(--cdisc_api_key\s+)(\S+)/,
+      '$1 *****',
+    );
+
     event.sender.send('renderer:ddeProgress', {
       id: request.id,
       step: request.step,
       status: 'starting',
-      line: `>_ ${commandLine}\n`,
+      line: `>_ ${sanitizedCommandLine}\n`,
     });
 
     const forwardOutput = (stream: NodeJS.ReadableStream) => {
