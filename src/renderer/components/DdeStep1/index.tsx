@@ -491,6 +491,21 @@ const DdeStep1: React.FC = () => {
                       <MenuItem value="v2">v2</MenuItem>
                     </TextField>
                   </Grid>
+                  <Grid size={{ xs: 12 }}>
+                    <FormControlLabel
+                      control={
+                        <Checkbox
+                          checked={config.useCdiscLibraryProxy}
+                          onChange={(event) =>
+                            updateConfig({
+                              useCdiscLibraryProxy: event.target.checked,
+                            })
+                          }
+                        />
+                      }
+                      label="Use cache"
+                    />
+                  </Grid>
                 </Grid>
               </Box>
 

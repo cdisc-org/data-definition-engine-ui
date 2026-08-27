@@ -17,6 +17,7 @@ export interface IDdeStep1Config {
   studydesign: string;
   docversion: string;
   cdiscApiKey: string;
+  useCdiscLibraryProxy: boolean;
   cosmosversion: string;
   validate: boolean;
   validationReportPath: string;
