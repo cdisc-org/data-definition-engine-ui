@@ -17,11 +17,14 @@ export const buildLoaderArgs = (config: IDdeStep1Config): string[] => {
     '--docversion',
     config.docversion,
     '--cosmosversion',
-    config.cosmosversion,
+    config.cosmosversion
   ];
 
   if (config.cdiscApiKey) {
     args.push('--cdisc_api_key', config.cdiscApiKey);
+  }
+  if (config.useCdiscLibraryProxy) {
+    args.push('--base_api_url', 'http://localhost:4600/api');
   }
   if (config.validate) {
     args.push('--validate');

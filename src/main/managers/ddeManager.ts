@@ -3,10 +3,11 @@ import { ChildProcessWithoutNullStreams, execFile, spawn } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import readline from 'readline';
+import ClaMirrorManager from '@/main/managers/claMirrorManager';
 import {
   DdeRunRequest,
   DdeRuntimePaths,
-  PythonCheckResult,
+  PythonCheckResult
 } from '@interfaces/common';
 
 interface DdeManagerOptions {
@@ -23,8 +24,11 @@ class DdeManager {
 
   private readonly runningProcesses = new Map<string, RunningProcess>();
 
+  private readonly claMirrorManager: ClaMirrorManager;
+
   constructor({ resourcesPath }: DdeManagerOptions) {
     this.resourcesPath = resourcesPath;
+    this.claMirrorManager = new ClaMirrorManager();
   }
 
   private getDdeScriptsPath(runtimePaths?: DdeRuntimePaths) {
@@ -37,7 +41,7 @@ class DdeManager {
 
   private getPythonVenvPath(
     env?: Record<string, string | undefined>,
-    runtimePaths?: DdeRuntimePaths,
+    runtimePaths?: DdeRuntimePaths
   ) {
     if (runtimePaths?.pythonVenvPath) {
       return runtimePaths.pythonVenvPath;
@@ -52,7 +56,7 @@ class DdeManager {
 
   private getPythonCommand(
     env?: Record<string, string | undefined>,
-    runtimePaths?: DdeRuntimePaths,
+    runtimePaths?: DdeRuntimePaths
   ) {
     if (env?.DDE_PYTHON_EXE) {
       return env.DDE_PYTHON_EXE;
@@ -75,12 +79,12 @@ class DdeManager {
 
   private getPythonEnv(
     env?: Record<string, string | undefined>,
-    runtimePaths?: DdeRuntimePaths,
+    runtimePaths?: DdeRuntimePaths
   ) {
     const pythonEnv = {
       ...process.env,
       ...env,
-      CDISC_API_KEY: env?.CDISC_API_KEY || process.env.CDISC_API_KEY,
+      CDISC_API_KEY: env?.CDISC_API_KEY || process.env.CDISC_API_KEY
     } as Record<string, string | undefined>;
 
     const venvPath = this.getPythonVenvPath(env, runtimePaths);
@@ -107,7 +111,7 @@ class DdeManager {
 
   private getScriptPath(
     step: DdeRunRequest['step'],
-    runtimePaths?: DdeRuntimePaths,
+    runtimePaths?: DdeRuntimePaths
   ) {
     const baseScriptsPath = this.getDdeScriptsPath(runtimePaths);
 
@@ -119,7 +123,7 @@ class DdeManager {
       baseScriptsPath,
       'generators',
       'define',
-      'define_generator.py',
+      'define_generator.py'
     );
   }
 
@@ -136,7 +140,7 @@ class DdeManager {
   private formatCommandLine(
     pythonCommand: string,
     scriptPath: string,
-    args: string[],
+    args: string[]
   ) {
     const quoteArg = (value: string) =>
       /\s/.test(value) ? `"${value.replace(/"/g, '\\"')}"` : value;
@@ -146,7 +150,7 @@ class DdeManager {
 
   public runStep = async (
     event: IpcMainInvokeEvent,
-    request: DdeRunRequest,
+    request: DdeRunRequest
   ): Promise<{ started: boolean } | { error: string }> => {
     const scriptPath = this.getScriptPath(request.step, request.runtimePaths);
     if (!fs.existsSync(scriptPath)) {
@@ -155,39 +159,46 @@ class DdeManager {
 
     const pythonCommand = this.getPythonCommand(
       request.env,
-      request.runtimePaths,
+      request.runtimePaths
     );
     const outputPath = this.getOutputPath(request);
     const definePath = request.step === 'step3' ? outputPath : undefined;
     const commandLine = this.formatCommandLine(
       pythonCommand,
       scriptPath,
-      request.args,
+      request.args
     );
+    const shouldUseProxy = request.args.includes('--base_api_url');
+    if (shouldUseProxy) {
+      await this.claMirrorManager.start(
+        request.env?.CDISC_API_KEY || process.env.CDISC_API_KEY || ''
+      );
+    }
+
     const child = spawn(pythonCommand, ['-u', scriptPath, ...request.args], {
       cwd: path.dirname(scriptPath),
       env: {
         ...this.getPythonEnv(request.env, request.runtimePaths),
-        PYTHONUNBUFFERED: '1',
-      },
+        PYTHONUNBUFFERED: '1'
+      }
     });
 
     this.runningProcesses.set(request.id, {
       child,
-      stopRequested: false,
+      stopRequested: false
     });
 
     // If there is a CDISC API key in the command, replace it with a placeholder in the log output to avoid exposing sensitive information.
     const sanitizedCommandLine = commandLine.replace(
       /(--cdisc_api_key\s+)(\S+)/,
-      '$1 *****',
+      '$1 *****'
     );
 
     event.sender.send('renderer:ddeProgress', {
       id: request.id,
       step: request.step,
       status: 'starting',
-      line: `>_ ${sanitizedCommandLine}\n`,
+      line: `>_ ${sanitizedCommandLine}\n`
     });
 
     const forwardOutput = (stream: NodeJS.ReadableStream) => {
@@ -197,7 +208,7 @@ class DdeManager {
           id: request.id,
           step: request.step,
           status: 'running',
-          line,
+          line
         });
       });
     };
@@ -206,6 +217,9 @@ class DdeManager {
     forwardOutput(child.stderr);
 
     child.on('error', (error) => {
+      if (shouldUseProxy) {
+        this.claMirrorManager.stop();
+      }
       this.runningProcesses.delete(request.id);
       event.sender.send('renderer:ddeProgress', {
         id: request.id,
@@ -213,11 +227,14 @@ class DdeManager {
         status: 'error',
         error: error.message,
         outputPath,
-        definePath,
+        definePath
       });
     });
 
     child.on('exit', (exitCode) => {
+      if (shouldUseProxy) {
+        this.claMirrorManager.stop();
+      }
       const current = this.runningProcesses.get(request.id);
       this.runningProcesses.delete(request.id);
       const status =
@@ -238,7 +255,7 @@ class DdeManager {
         error:
           status === 'error'
             ? `Process exited with code ${exitCode}`
-            : undefined,
+            : undefined
       });
     });
 
@@ -247,7 +264,7 @@ class DdeManager {
 
   public stopStep = async (
     _event: IpcMainInvokeEvent,
-    id: string,
+    id: string
   ): Promise<boolean> => {
     const current = this.runningProcesses.get(id);
     if (!current) {
@@ -260,7 +277,7 @@ class DdeManager {
 
   public checkPython = async (
     _event: IpcMainInvokeEvent,
-    runtimePaths?: DdeRuntimePaths,
+    runtimePaths?: DdeRuntimePaths
   ): Promise<PythonCheckResult> => {
     const pythonCommand = this.getPythonCommand(undefined, runtimePaths);
     const modules = [
@@ -269,7 +286,7 @@ class DdeManager {
       'odmlib',
       'defineutils',
       'yaml',
-      'dotenv',
+      'dotenv'
     ];
 
     const script = [
@@ -277,7 +294,7 @@ class DdeManager {
       `mods = ${JSON.stringify(modules)}`,
       'missing = [name for name in mods if importlib.util.find_spec(name) is None]',
       'print(sys.version.split()[0])',
-      'print("|".join(missing))',
+      'print("|".join(missing))'
     ].join('; ');
 
     return new Promise((resolve) => {
@@ -292,7 +309,7 @@ class DdeManager {
               pythonCommand,
               version: null,
               missingModules: [],
-              error: stderr.trim() || error.message,
+              error: stderr.trim() || error.message
             });
             return;
           }
@@ -309,9 +326,9 @@ class DdeManager {
             pythonCommand,
             version: versionLine || null,
             missingModules,
-            error: null,
+            error: null
           });
-        },
+        }
       );
     });
   };

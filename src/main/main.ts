@@ -8,16 +8,17 @@ import {
   shell,
   ipcMain,
   protocol,
-  net,
+  net
 } from 'electron';
 import {
   installExtension,
   REDUX_DEVTOOLS,
-  REACT_DEVELOPER_TOOLS,
+  REACT_DEVELOPER_TOOLS
 } from 'electron-devtools-installer';
 import StoreManager from '@/main/managers/storeManager';
 import DefineXmlManager from '@/main/managers/defineXmlManager';
 import DdeManager from '@/main/managers/ddeManager';
+import ClaMirrorManager from '@/main/managers/claMirrorManager';
 import { resolveHtmlPath, writeToClipboard, parseArgs } from '@/main/utils';
 import { FileInfo } from '@interfaces/common';
 
@@ -87,9 +88,9 @@ protocol.registerSchemesAsPrivileged([
       standard: true,
       secure: true,
       supportFetchAPI: true,
-      stream: true,
-    },
-  },
+      stream: true
+    }
+  }
 ]);
 
 const RESOURCES_PATH = app.isPackaged
@@ -109,8 +110,8 @@ const createWindow = async (openedFilePath?: string | null) => {
     webPreferences: {
       preload: app.isPackaged
         ? path.join(__dirname, 'preload.js')
-        : path.join(__dirname, '../../.erb/dll/preload.js'),
-    },
+        : path.join(__dirname, '../../.erb/dll/preload.js')
+    }
   });
 
   newWindow.loadURL(resolveHtmlPath('index.html'));
@@ -160,7 +161,7 @@ const getFileInfo = async (fullPath: string): Promise<FileInfo> => {
     filename: parsed.base,
     format: parsed.ext.replace(/^\./, ''),
     size: stats.size,
-    lastModified: stats.mtime.getTime(),
+    lastModified: stats.mtime.getTime()
   };
 };
 
@@ -177,7 +178,7 @@ app
       try {
         const [redux, react] = await installExtension([
           REDUX_DEVTOOLS,
-          REACT_DEVELOPER_TOOLS,
+          REACT_DEVELOPER_TOOLS
         ]);
         console.log(`Added Extensions:  ${redux.name}, ${react.name}`);
       } catch (err) {
@@ -203,14 +204,14 @@ app
           multiple?: boolean;
           initialFolder?: string;
           filters?: { name: string; extensions: string[] }[];
-        },
+        }
       ) => {
         const result = await dialog.showOpenDialog({
           properties: options.multiple
             ? ['openFile', 'multiSelections']
             : ['openFile'],
           defaultPath: options.initialFolder || undefined,
-          filters: options.filters,
+          filters: options.filters
         });
 
         if (result.canceled) {
@@ -218,16 +219,16 @@ app
         }
 
         return Promise.all(
-          result.filePaths.map((fullPath) => getFileInfo(fullPath)),
+          result.filePaths.map((fullPath) => getFileInfo(fullPath))
         );
-      },
+      }
     );
     ipcMain.handle(
       'main:openDirectoryDialog',
       async (_event, initialFolder: string | null) => {
         const result = await dialog.showOpenDialog({
           properties: ['openDirectory'],
-          defaultPath: initialFolder || undefined,
+          defaultPath: initialFolder || undefined
         });
 
         if (result.canceled || result.filePaths.length === 0) {
@@ -235,12 +236,12 @@ app
         }
 
         return result.filePaths[0];
-      },
+      }
     );
     ipcMain.handle('main:openDefineXml', defineXmlManager.openDefineXml);
     ipcMain.handle(
       'main:getDefineXmlContent',
-      defineXmlManager.getDefineXmlContent,
+      defineXmlManager.getDefineXmlContent
     );
     ipcMain.handle('main:closeDefineXml', defineXmlManager.closeDefineXml);
     ipcMain.handle('main:runDdeStep', ddeManager.runStep);
@@ -255,13 +256,13 @@ app
     ipcMain.handle('main:searchInPageNext', (_event, searchTerm) => {
       _event.sender.findInPage(searchTerm, {
         forward: true,
-        findNext: true,
+        findNext: true
       });
     });
     ipcMain.handle('main:searchInPagePrevious', (_event, searchTerm) => {
       _event.sender.findInPage(searchTerm, {
         forward: false,
-        findNext: true,
+        findNext: true
       });
     });
     ipcMain.handle('main:clearSearchResults', (_event) => {
@@ -273,9 +274,9 @@ app
         path.join(
           RESOURCES_PATH,
           path.normalize(
-            decodeURIComponent(request.url.replace(/^media:\/\/\/?/, '')),
-          ),
-        ),
+            decodeURIComponent(request.url.replace(/^media:\/\/\/?/, ''))
+          )
+        )
       );
 
       if (filePath.startsWith(RESOURCES_PATH)) {

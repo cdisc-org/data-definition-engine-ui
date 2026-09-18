@@ -49,6 +49,7 @@ export const dde: IDdeState = {
     studydesign: '0',
     docversion: '0',
     cdiscApiKey: '',
+    useCdiscLibraryProxy: false,
     cosmosversion: 'v2',
     validate: false,
     validationReportPath: '',
